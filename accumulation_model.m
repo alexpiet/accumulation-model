@@ -34,6 +34,10 @@ if params(3) < 0.5;     error('You might be hitting the low-variance case.'); en
 if length(data) < 1;    error('no data!'); end;
 if length(params) ~= 8; error('This model only works with 8 parameters'); end;
 
+if p.fit
+    error('I havent implemented the fitting into this master function yet. Check out the function fit_rat_analytical() to fit the model')
+end
+
 % for each trial
 p_set = p;
 for i=1:length(data)
