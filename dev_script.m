@@ -1,8 +1,8 @@
 %close all; clear all;
 
 % load example fit and dataset
-load('/home/alex/Dropbox/dynamic/model_fits/ANALYSIS/dataset_2_gaussian_prior/fit_analysis_analyticalH084.mat')
-load('/home/alex/Dropbox/dynamic/model_fits/DATA/dataset_1/H084.mat','data')
+load('fit_analysis_analyticalH084.mat')
+load('H084.mat','data')
 
 % set up parameters
 TN = 1;
