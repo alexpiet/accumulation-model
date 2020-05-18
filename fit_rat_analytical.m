@@ -36,10 +36,10 @@ else
         end
         
         % set initial parameter values, upper and lower bounds and prior
-        params      = [0.01*randn(1) 50*rand 50*rand    30*rand     rand    .7*rand 0       .5*rand];
+        p0      = [0.01*randn(1) 50*rand 50*rand    30*rand     rand    .7*rand 0       .5*rand];
         %params =     [ lambda,     sa,     ss,         si,         phi,    tau,    bias,   lapse];
-        lower_bound = [ -40,       0,      0,           0,          0,      0,      -.1,     0];
-        upper_bound = [ +40,       200,    5000,        30,         1.2,    0.7,    +.1,     1];
+        lower_bound = [ -40,       0,      0,           0,          0,      0,      -20,     0];
+        upper_bound = [ +40,       200,    5000,        30,         1.2,    0.7,    +20,     1];
         prior_mean  = nan(1,8);
         prior_var   = nan(1,8);
         prior_mean([2 4]) = [0 0];
@@ -59,17 +59,22 @@ else
         
         
         [x_fmincon, f, exitflag, output, ~, grad, hessian] = ...
-            fmincon(nllfun, params, ...
-            [], [], [], [], lower_bound,  upper_bound, [], optimset('Display', 'iter-detailed'));
+            fmincon(nllfun, p0, ...
+            [], [], [], [], lower_bound,  upper_bound, [], ...
+            optimset('Display', 'iter-detailed','TolFun',1e-12));
         t=toc;
         
-        fit.rat = ratname;
-        fit.time = t;
-        fit.final = x_fmincon;
-        fit.f = f;
-        fit.exitflag = exitflag;
-        fit.grad = grad;
-        fit.hessian = hessian;
+        fit.p0          = p0;
+        fit.lower_bound = lower_bound;
+        fit.upper_bound = upper_bound;
+        fit.rat         = ratname;
+        fit.time        = t;
+        fit.final       = x_fmincon;
+        fit.f           = f;
+        fit.exitflag    = exitflag;
+        fit.grad        = grad;
+        fit.hessian     = hessian;
+        fit.nt          = length(pokedR);
         
         % Save results
         savefile = fullfile(results_dir, ['fit_analytical_' ratname]);
