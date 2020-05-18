@@ -1,30 +1,37 @@
 % load the old fit for this rat
-rat = 'H084';
-f = load('fit_analysis_analyticalH084.mat')
-saved_bf = f.fit.final
+rat = 'H084_copy';
 %% refit with vectorized analytical model
 r = fit_rat_analytical(rat)
 %%
-r = load('../../results/fit_analytical_H084.mat');
+r = load(sprintf('../../results/fit_analytical_%s.mat',rat));
 vector_bf = r.fit.final;
 %%
-d = load('H084.mat') ;
-data = d.data;
+f = load('fit_analysis_analyticalH084.mat')
+saved_bf = f.fit.final
+%%
+
+
+%%
+d = load('example_data/H084.mat') ;
+d_ = load('example_data/H084_copy');
+data = d_.data;
 pokedR      = [data.pokedR]';
 stim_dur    = [data.T]';
+[buptimes,nantimes,streamIdx] = vectorize_clicks({data.leftbups}, {data.rightbups});
+
 %%
 p.dt = 1e-4;
 p.compute_full = 0;
 prior_mean  = nan(1,8);
 prior_var   = nan(1,8);
 prior_mean([2 4]) = [0 0];
-prior_var([2 4]) = [ 0.01 0.01];
+prior_var([2 4]) = [ 5.39 1.87];
 p.prior = nan(1,8);
 p.prior([2 4]) = prior_var([2 4]);
 
-test_params = saved_bf;
+test_params = vector_bf;
 
-[nll cost] = compute_LL(data,test_params,p);
+[nll] = compute_LL(data,test_params,p);
 
 
 [vectorized_nll,~,~,~,vectorized_cost] = compute_LL_vectorized(buptimes,streamIdx,...
@@ -33,8 +40,6 @@ test_params = saved_bf;
 
 nll 
 vectorized_nll
-cost
-vectorized_cost
 
 
 %%
@@ -44,7 +49,6 @@ vectorized_cost
 p.dt = 1e-4;
 p.prior = [0,          5.39,   0,          1.87,       0,      0,      0,      0];
 p.prior = [0,          5.39,   0,          1.87,       0,      0,      0,      0];
-[buptimes,nantimes,streamIdx] = vectorize_clicks({data.leftbups}, {data.rightbups});
 
 
 
