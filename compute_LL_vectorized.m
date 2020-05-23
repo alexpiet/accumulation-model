@@ -1,4 +1,4 @@
-function [NLL_total, mean_a,var_a,NLL, prior_cost] = ...
+function [NLL_total, mean_a,var_a, NLL, p_chosen, p_chooseR] = ...
    compute_LL_vectorized(buptimes,streamIdx,stim_duration, pokedR, param_set,varargin)
 
     p=inputParser;
@@ -63,8 +63,14 @@ function [NLL_total, mean_a,var_a,NLL, prior_cost] = ...
     erfTerm = erf( (mean_a - bias) ./ sqrt(2*var_a));
     erfTerm(erfTerm==1)=1-eps;
     erfTerm(erfTerm==-1)=eps-1;
-    NLL(pokedR) = -(log( ((1-lapse).*(1+erfTerm(pokedR))+lapse)/2 ) );
-    NLL(~pokedR) = -log( (1 - lapse) .* (1 - 0.5 .* (1+erfTerm(~pokedR))) + lapse/2 );    
+    
+    
+    p_chooseR = ((1-lapse).*(1+erfTerm)+lapse)/2;
+    p_chosen = p_chooseR;
+    p_chosen(~pokedR) =  (1 - lapse) .* (1 - 0.5 .* (1+erfTerm(~pokedR))) + lapse/2 ;
+    NLL = -log(p_chosen);
+%     NLL(pokedR) = -log( p_chooseR ) ;
+%     NLL(~pokedR) = -log(p_chosen(~pokedR));
     
     prior_cost = 0;
     for pp = 1:length(params.prior_mean)
