@@ -1,4 +1,4 @@
-function [fit] = fit_rat_analytical(ratnames)
+function [fit] = fit_rat_analytical(ratnames, dosave)
 % fit_rat_analytical(ratnames)
 % Script for fitting Bing's accumulation model to the dynamic clicks task behavior
 % input:
@@ -26,13 +26,16 @@ else
             % negative ratnum loads synthetic dataset for testing purposes
             ratname = ['dataset_' num2str(abs(ratnum))];
             load(fullfile(data_dir, ratname));
-        else
+        elseif isstr(ratnames)
             ratname = ratnames;
             if exist(fullfile(example_data_dir, [ratname '.mat']),'file')
                 load(fullfile(example_data_dir, ratname));
             elseif exist(fullfile(data_dir, [ratname '.mat']),'file')
                 load(fullfile(data_dir, ratname));
             end
+        elseif isstruct(ratnames)
+            data = ratnames;
+            ratname = 'unknown';
         end
         
         % set initial parameter values, upper and lower bounds and prior
@@ -78,7 +81,9 @@ else
         
         % Save results
         savefile = fullfile(results_dir, ['fit_analytical_' ratname]);
-        save(savefile);
+        if dosave
+            save(savefile);
+        end
     catch me
         disp(me)
         
