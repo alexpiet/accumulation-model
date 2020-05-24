@@ -1,4 +1,4 @@
-function [fit] = fit_rat_analytical(ratnames, dosave)
+function [fit] = fit_rat_analytical(ratnames, projectpaths)
 % fit_rat_analytical(ratnames)
 % Script for fitting Bing's accumulation model to the dynamic clicks task behavior
 % input:
@@ -9,8 +9,14 @@ function [fit] = fit_rat_analytical(ratnames, dosave)
 %
 % if no input is given, loads a synthetic dataset
 
-
-pbups_dyn_path()
+if nargin < 2
+    fprintf('will try to save and load data in current directory')
+    data_dir = [];
+    results_dir = [];
+else
+    data_dir = projectpaths.data_dir;
+    results_dir = projectpaths.results_dir;
+end
 
 if iscell(ratnames) 
     for rr = 1:length(ratnames)

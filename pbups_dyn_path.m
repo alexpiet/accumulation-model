@@ -1,5 +1,6 @@
-project_dir = '~/projects/pbups_dyn';
-code_dir = fullfile(project_dir, 'code');
-data_dir = fullfile(project_dir,'data');
-results_dir = fullfile(project_dir,'results');
-example_data_dir = './example_data';
+function p = pbups_dyn_paths()
+p.project_dir = '~/projects/pbups_dyn';
+p.code_dir = fullfile(p.project_dir, 'code');
+p.data_dir = fullfile(p.project_dir,'data');
+p.results_dir = fullfile(p.project_dir,'results');
+p.example_data_dir = './example_data';
