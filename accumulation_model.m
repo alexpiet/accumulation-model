@@ -1,36 +1,29 @@
-function [model,p] =accumulation_model(data, params, command, p_in);
+function [model,p] = accumulation_model(data, params, varargin);
 % 
 % options: fit, evaluate, forward, backward
 % Set default parameters
-p.dt            = 1e-4; % Timestep for evaluating model
-p.error_tolerance = 1e-4;
-p.posterior_only = 0;
-p.forward_only  = 0;
-p.evaluate_only = 0;
-p.fit           = 0;
-p.compute_dist  = 0;    % 1=compute full pdf
-p.eval_tvec     = [];   % Vector of time points to evaluate PDF
-%%p.b             = 50; % Will not stay here
-p.eval_dt       = 1e-3; % downsample for making PDF
-p.just_pdf      = 0;
-p.return_backwards = 0;
+p = inputParser;
+addParameter(p, 'dt', 1e-4)
+addParameter(p, 'error_tolerance', 1e-4)
+addParameter(p, 'posterior_only', 0)
+addParameter(p, 'forward_only', 0)
+addParameter(p, 'evaluate_only', 0)
+addParameter(p, 'fit', 0)
+addParameter(p, 'compute_dist', 0)
+addParameter(p, 'eval_tvec', [])
+addParameter(p, 'eval_dt', 1e-3)
+addParameter(p, 'just_pdf', 0)
+addParameter(p, 'return_backwards', 0)
+addParameter(p, 'avals', [-10:.1:10])
+addParameter(p, 'da_grid', .1)
+parse(p,varargin{:});
+p = p.Results;
 
-% use command option to determine what we will do
-if nargin > 2
-    if strcmp(command, 'posterior'); p.posterior_only = 1;  end;
-    if strcmp(command, 'forward');   p.forward_only = 1;    end;
-    if strcmp(command, 'evaluate');  p.evaluate_only = 1;   end;
-    if strcmp(command, 'fit');       p.fit = 1;             end;
-end
-
-% overwrite default parameters with those in p_in
-if nargin > 3; 
-    names = fieldnames(p_in);
-    for i=1:length(names); p = setfield(p, names{i}, getfield(p_in, names{i})); end;
-end
+p.da = unique(diff(round(1e3*p.avals))/1e3);
+assert(length(p.da)==1);
 
 % Parse inputs, do checks
-if params(3) < 0.5;     error('You might be hitting the low-variance case.'); end;
+if params(3) < 0.1;     error('You might be hitting the low-variance case.'); end;
 if length(data) < 1;    error('no data!'); end;
 if length(params) ~= 8; error('This model only works with 8 parameters'); end;
 
@@ -45,7 +38,7 @@ for i=1:length(data)
     if mod(i,100) == 1
         disp(i)
     end
-    try 
+    %try 
     % create inputs
     [cl, cr]    = make_adapted_cat_clicks(data(i).leftbups, data(i).rightbups, params(5), params(6));
     data(i).clicks      = [-cl  +cr];
@@ -87,11 +80,11 @@ for i=1:length(data)
     if ~p.posterior_only
         model(i).forward = forward;
     end
-    catch
-        disp(['failure - ' num2str(i)])
-        model(i).posterior = [];
-        
-    end
+%     catch
+%         disp(['failure - ' num2str(i)])
+%         model(i).posterior = [];
+%         
+%     end
 
 end
 
