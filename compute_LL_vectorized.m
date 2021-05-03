@@ -11,6 +11,12 @@ function [NLL_total, mean_a,var_a, NLL, p_chosen, p_chooseR] = ...
     parse(p, varargin{:})
     params = p.Results; 
 
+    if isstruct(buptimes)
+        data = buptimes;
+        pokedR = [data.pokedR]';
+        stim_duration = [data.T];
+        [buptimes,nantimes,streamIdx] = vectorize_clicks({data.leftbups}, {data.rightbups});
+    end
 
     if isempty(params.nantimes)
         error('you should pass in nantimes')
@@ -64,10 +70,11 @@ function [NLL_total, mean_a,var_a, NLL, p_chosen, p_chooseR] = ...
     erfTerm(erfTerm==1)=1-eps;
     erfTerm(erfTerm==-1)=eps-1;
     
-    
-    p_chooseR = ((1-lapse).*(1+erfTerm)+lapse)/2;
+    pr_ = (1+erfTerm)./2;
+    p_chooseR = (1-lapse).*pr_+lapse/2;
+    p_chooseL = (1-lapse).*(1-pr_) + lapse/2;
     p_chosen = p_chooseR;
-    p_chosen(~pokedR) =  (1 - lapse) .* (1 - 0.5 .* (1+erfTerm(~pokedR))) + lapse/2 ;
+    p_chosen(~pokedR) =  p_chooseL(~pokedR) ;
     NLL = -log(p_chosen);
 %     NLL(pokedR) = -log( p_chooseR ) ;
 %     NLL(~pokedR) = -log(p_chosen(~pokedR));
