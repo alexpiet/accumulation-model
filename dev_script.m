@@ -1,8 +1,13 @@
 %close all; clear all;
 
 % load example fit and dataset
-load('fit_analysis_analyticalH084.mat')
-load('H084.mat','data')
+dp = set_dyn_path(1);
+ex_rat = 'H084';
+model_fit_fn = fullfile(dp.model_fits_dir, ['fit_analytical_' ex_rat '.mat'])
+
+fit = fit_rat_analytical(ex_rat,'data_dir',dp.data_dir,'results_dir',dp.model_fits_dir);
+load(fit.datafile)
+%%
 
 % set up parameters
 TN = 1;
@@ -22,8 +27,9 @@ p.dt            = 1e-4;
 p.b             = 50;
 p.da            = 1;
 p.avals         = -p.b:p.da:p.b;
-%p.da_grid       = 1;
-%p.a_grid        = -p.b:p.da_grid:p.b + params(7);
+p.a_sign = 2 * data(TN).pokedR - 1; % added by TB
+p.da_grid       = 1; % uncommented by TB
+p.a_grid        = -p.b:p.da_grid:p.b + params(7); % uncommented by TB
 %%p.a_grid        = [-p.b:p.da_grid:-2 -1.75:0.25:-1 0:p.da_grid:p.b] + params(7);
 %%p.a_grid        = [-p.b:2:-10 -9:p.da_grid:p.b] + params(7);
 %p.a_grid_s = [p.da_grid (diff(p.a_grid(1:end-1)) + diff(p.a_grid(2:end)))/2 p.da_grid];
@@ -71,7 +77,10 @@ forward = compute_pdf(forward,p.avals,p);
 forward.plot_zero_line = true;
 forward.plot_mean_line = false;
 forward.title = 'Forward';
-figure; subplot(2,4,1);
+%%
+figure(1); 
+clf; 
+subplot(2,4,1);
 plot_pdf(forward);
 plott = plott + toc;
 % compute backwards pass
@@ -80,7 +89,7 @@ tic
 p = get_grid(data(TN), forward, params,p);
 [back, posterior] = compute_backwards_pass(data(TN),params,p,forward);
 computet= computet + toc;
-
+%%
 % visualize backwards pass - one delta solution
 tic
 bdex = find(back.a_grid == p.d_dex); % which mode to compute
@@ -90,7 +99,7 @@ back.plot_mean_line = false;
 back.title = 'Backward Delta';
 subplot(2,4,2);
 plot_pdf(back);
-
+%%
 % visualize posterior - one delta solution
 subplot(2,4,3);
 %posterior.ma = back.pma;
@@ -111,7 +120,7 @@ backF.plot_mean_line = false;
 backF.title = 'Backward Full';
 subplot(2,4,5);
 plot_pdf(backF);
-
+%%
 % visualize entire posterior 
 subplot(2,4,4);
 plott = plott + toc;
