@@ -1,4 +1,5 @@
-function [NLL_total] = compute_LL(data, params,p)
+function [NLL_total, ma, va,  p_chooseR] = compute_LL(data, params,p)
+
 
 NLL   = zeros(1,length(data));
 if length(params) == 8
@@ -13,11 +14,23 @@ elseif length(params) == 6
 end
 
 % iterate over trials
-for i=1:length(data)
-    [ma,va] = compute_trial(data(i), params,p);
+p_chooseR = nan(length(data),1);
+ma = nan(size(p_chooseR));
+va = nan(size(p_chooseR));
+for tt=1:length(data)
+    [ma(tt),va(tt)] = compute_trial(data(tt), params,p);
     
     % compute pr, pl with bias
-    pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
+    pr = 0.5*(1+erf( -(bias-ma(tt))/sqrt(2*va(tt))));
+    
+    p_chooseR(tt) = pr;
+    
+    if pr == 1
+        pr = pr - eps;
+    elseif pr == 0
+        pr = pr + eps;
+    end
+    
     pl = 1-pr;
 
     % compute pr, pl with lapse
@@ -25,14 +38,14 @@ for i=1:length(data)
     PL = (1-lapse)*pl + lapse*0.5;
 
     % compute NLL for this trial
-    if data(i).pokedR
+    if data(tt).pokedR
         nll = -log(PR);
     else
         nll = -log(PL);
     end
     
     % add to total over all trials
-    NLL(i) = nll;
+    NLL(tt) = nll;
 end
 
 NLL_total = sum(NLL);
