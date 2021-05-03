@@ -1,99 +1,197 @@
-function [fit] = fit_rat_analytical(ratnames, projectpaths)
+function [fit data savefile] = fit_rat_analytical(ratnames, varargin)
 % fit_rat_analytical(ratnames)
 % Script for fitting Bing's accumulation model to the dynamic clicks task behavior
 % input:
-% ratnames      a list of ratnames 
+% ratnames      a list of ratnames
 %
 % searches for mat files with each ratname in the input list in the data directory specified
 % by pbups_dyn_path
 %
 % if no input is given, loads a synthetic dataset
 
-if nargin < 2
-    fprintf('will try to save and load data in current directory')
-    data_dir = [];
-    results_dir = [];
-else
-    data_dir = projectpaths.data_dir;
-    results_dir = projectpaths.results_dir;
-end
+p = inputParser();
+addParameter(p, 'p0',[]);
+addParameter(p, 'data_dir','');
+addParameter(p, 'results_dir','');
+addParameter(p, 'dosave',true);
+addParameter(p, 'reload',true);
+addParameter(p, 'save_suffix','');
+addParameter(p, 'use_param',true(1,8));
+addParameter(p, 'param_default',[]);
+addParameter(p, 'vectorize',true);
+addParameter(p,'prior_mean', [nan 0 nan 0 nan nan nan nan]);
+addParameter(p,'prior_var', [nan 5.39 nan 1.87 nan nan nan nan]);
+addParameter(p, 'lower_bound', [ -40, 0,   0,    0,  0, 0.01, -20, 0]);
+addParameter(p, 'upper_bound', [ +40, 200, 5000, 30, 1.2, .7, +20, 1]);
+addParameter(p, 'overwrite',0)
+addParameter(p, 'TolFun',1e-6)
+parse(p,varargin{:})
 
-if iscell(ratnames) 
+
+par = p.Results;
+data_dir = par.data_dir;
+results_dir = par.results_dir;
+
+save_suffix = par.save_suffix;
+
+data = [];
+
+if iscell(ratnames)
     for rr = 1:length(ratnames)
         ratname = ratnames{rr};
-        fit_rat_analyical(ratname);
+        fit{rr} = fit_rat_analytical(ratname, varargin{:});
     end
-else   
+else
     % Try to fit model
-    try
-        %    parpool
-        % Load data
-        if isnumeric(ratnames) & ratnames < 1
-            % negative ratnum loads synthetic dataset for testing purposes
-            ratname = ['dataset_' num2str(abs(ratnum))];
-            load(fullfile(data_dir, ratname));
-        elseif isstr(ratnames)
-            ratname = ratnames;
-            if exist(fullfile(example_data_dir, [ratname '.mat']),'file')
-                load(fullfile(example_data_dir, ratname));
-            elseif exist(fullfile(data_dir, [ratname '.mat']),'file')
-                load(fullfile(data_dir, ratname));
-            end
-        elseif isstruct(ratnames)
-            data = ratnames;
-            ratname = 'unknown';
+    %     try
+    %    parpool
+    % Load data
+    if isstruct(ratnames)
+        data = ratnames;
+        if isfield(data,'ratname')
+            ratname = data(1).ratname;
+        else
+            ratname = ['unknown_' num2str(now)];
         end
-        
-        % set initial parameter values, upper and lower bounds and prior
-        p0      = [0.01*randn(1) 50*rand 50*rand    30*rand     rand    .7*rand 0       .5*rand];
-        %params =     [ lambda,     sa,     ss,         si,         phi,    tau,    bias,   lapse];
-        lower_bound = [ -40,       0,      0,           0,          0,      0,      -20,     0];
-        upper_bound = [ +40,       200,    5000,        30,         1.2,    0.7,    +20,     1];
-        prior_mean  = nan(1,8);
-        prior_var   = nan(1,8);
-        prior_mean([2 4]) = [0 0];
-        prior_var([2 4]) = [5.39 1.87];
-%         p.compute_full = 0;
-%         p.dt = 1e-4;
-%         
-        % fit
-        disp(['Starting fit for rat ' ratname])
-        tic
-        
-        [buptimes,nantimes,streamIdx] = vectorize_clicks({data.leftbups}, {data.rightbups});
-        pokedR      = [data.pokedR]';
-        stim_dur    = [data.T];
-        nllfun = @(params) compute_LL_vectorized(buptimes,streamIdx,stim_dur, pokedR, params,...
-            'prior_var',prior_var,'prior_mean',prior_mean, 'nantimes', nantimes);
-        
-        
-        [x_fmincon, f, exitflag, output, ~, grad, hessian] = ...
-            fmincon(nllfun, p0, ...
-            [], [], [], [], lower_bound,  upper_bound, [], ...
-            optimset('Display', 'iter-detailed','TolFun',1e-12));
-        t=toc;
-        
-        fit.p0          = p0;
-        fit.lower_bound = lower_bound;
-        fit.upper_bound = upper_bound;
-        fit.rat         = ratname;
-        fit.time        = t;
-        fit.final       = x_fmincon;
-        fit.f           = f;
-        fit.exitflag    = exitflag;
-        fit.grad        = grad;
-        fit.hessian     = hessian;
-        fit.nt          = length(pokedR);
-        
-        % Save results
-        savefile = fullfile(results_dir, ['fit_analytical_' ratname]);
-        if dosave
-            save(savefile);
+        ratnames = ratname;
+        datafile = [];
+    elseif isnumeric(ratnames) & ratnames < 1
+        % negative ratnum loads synthetic dataset for testing purposes
+        ratname = ['dataset_' num2str(abs(ratnum))];
+        datafile = fullfile(data_dir, ratname);
+        load(datafile);
+    elseif isstr(ratnames)
+        ratname = ratnames;
+        savefile = fullfile(results_dir, ['fit_analytical_' ratname ...
+            save_suffix '.mat']);
+        if exist(savefile,'file') & ~par.overwrite
+            fprintf('loading existing file...')
+            load(savefile)
+            return
         end
-    catch me
-        disp(me)
-        
-        fprintf('Rat failed: %s\n',ratname)
+        datafile = fullfile(data_dir, ratname);
+        load(datafile);
     end
+    savefile = fullfile(results_dir, ['fit_analytical_' ratname ...
+        save_suffix '.mat']);
+    
+    % set initial parameter values, upper and lower bounds and prior
+    if isempty(par.p0)
+        %p0      = [0.01*randn(1) 50*rand 50*rand    30*rand     rand    .7*rand 0       .5*rand]
+        p0      = [0.01*randn(1) rand rand  rand  .5*rand .7*rand 0 .1*rand];
+    else
+        p0 = par.p0;
+    end
+
+    if exist(savefile,'file') 
+        if ~par.overwrite
+            fprintf('loading existing file...')
+            load(savefile)
+        return
+        elseif par.reload & isempty(par.p0)
+            old_fit = load(savefile);
+            p0  = old_fit.fit.final_full;
+            fprintf('initializing at last recovered solution')
+        end
+    end
+    
+    
+
+    use_param   = logical(par.use_param);
+    p0          = p0(use_param);
+    param_names = {'\lambda', '\sigma_a', '\sigma_s', '\sigma_i', '\phi',  '\tau', 'bias', 'lapse'};
+    
+    lower_bound = par.lower_bound(use_param);
+    upper_bound = par.upper_bound(use_param);
+    prior_mean  = par.prior_mean;
+    prior_var   = par.prior_var;
+    %         p.compute_full = 0;
+    %         p.dt = 1e-4;
+    %
+    % fit
+    disp(['Starting fit for rat ' ratname])
+    tic
+    
+    extra_args = {'use_param',par.use_param};
+    
+    if ~isempty(par.param_default)
+        extra_args{end+1} = 'param_default';
+        extra_args{end+1} = par.param_default;
+    end
+    
+    pokedR      = [data.pokedR]';
+    stim_dur    = [data.T];
+    if par.vectorize
+        [buptimes,nantimes,streamIdx] = vectorize_clicks({data.leftbups}, {data.rightbups});
+        
+        nllfun = @(params) compute_LL_vectorized(buptimes,streamIdx,...
+            stim_dur, pokedR, params,...
+            'prior_var',prior_var,'prior_mean',prior_mean,...
+            'nantimes', nantimes, extra_args{:});
+        
+    else
+        opts.compute_full = false;
+        opts.dt = .001;
+        fill_params = @(params) fill_defaults(params,par.use_param,...
+            par.param_default);
+        nllfun = @(params)  compute_LL(data, fill_params(params), opts);
+        
+    end
+    
+    [xbf, f, exitflag, output, ~, grad, hessian] = ...
+        fmincon(nllfun, p0, ...
+        [], [], [], [], lower_bound,  upper_bound, [], ...
+        optimset('Display', 'iter-detailed','TolFun',par.TolFun,...
+        'MaxFunEvals',1e4));
+    t=toc;
+    
+    bf_full = par.param_default;
+    bf_full(use_param) = xbf;
+    
+    if par.vectorize
+        [~, ~, ~, ~, ~, pr] = compute_LL_vectorized(buptimes,streamIdx,...
+            stim_dur, pokedR, xbf,...
+            'prior_var',prior_var,'prior_mean',prior_mean,...
+            'nantimes', nantimes, extra_args{:});
+    else
+        [~, pr] = compute_LL(data, fill_params(xbf_full), opts);
+    end
+    
+    
+    fit.p0          = p0;
+    fit.lower_bound = lower_bound;
+    fit.upper_bound = upper_bound;
+    fit.rat         = ratname;
+    fit.time        = t;
+    fit.final       = xbf;
+    fit.f           = f;
+    fit.final_full  = bf_full;
+    fit.exitflag    = exitflag;
+    fit.grad        = grad;
+    fit.hessian     = hessian;
+    fit.nt          = length(pokedR);
+    fit.pr          = pr;
+    fit.datafile    = datafile;
+    fit.datenum     = datetime;
+    fit.use_param   = par.use_param;
+    fit.param_default = par.param_default;
+    fit.param_names   = param_names;
+    fit.prior_mean      = prior_mean;
+    fit.prior_var      = prior_var;
+    
+    % Save results
+    if par.dosave
+        save(savefile,'fit','par','data');
+    end
+    
+    %     catch me
+    %         disp(me)
+    %
+    %         fprintf('Rat failed: %s\n',ratname)
+    %     end
 end
 
+
+function param_set = fill_defaults(params,use_param,defaults)
+param_set  = defaults;
+param_set(logical(use_param)) = params;
