@@ -3,9 +3,9 @@ function [] = plot_pdf(D)
 % D.plot_zero_line, will plot a dashed line at a=0
 % D.plot_mean_line, will plot a line at the mean of the PDF at each timepoint
 
-if ~isfield(D, 'zlimit'); D.zlimit = 0.5; end;
+if ~isfield(D, 'zlimit'); D.zlimit = 0.15; end;
 %imagesc(D.avals, D.T, D.pdf, [0 .5])
-imagesc(D.T,D.avals,D.pdf',[0 .5])
+imagesc(D.T,D.avals,D.pdf',[0 D.zlimit])
 xlabel('Time (s)', 'fontsize',12)
 ylabel('Accumulated Evidence (a)' ,'fontsize',12)
 %%
@@ -52,7 +52,7 @@ if isfield(D, 'left_clicks');
         D.left_click_y = -D.click_lim;
     end
     if D.left_click_marker == '|'
-        plot([D.left_clicks; D.left_clicks]', D.left_click_y-[0;1],  '-', ...
+        plot([D.left_clicks; D.left_clicks]', D.left_click_y-[0;1].*D.click_height,  '-', ...
             'color',left_color)
     else
         plot(D.left_clicks, D.left_click_y,  D.left_click_marker, ...
@@ -66,7 +66,7 @@ if isfield(D, 'right_clicks');
         D.right_click_y = D.click_lim;
     end
     if D.right_click_marker == '|'
-        plot([D.right_clicks; D.right_clicks]', D.right_click_y-[0;1],  '-', ...
+        plot([D.right_clicks; D.right_clicks]', D.right_click_y+[0;1].*D.click_height,  '-', ...
             'color',right_color)
     else
         plot(D.right_clicks, D.right_click_y,  D.right_click_marker, ...

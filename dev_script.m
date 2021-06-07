@@ -37,13 +37,12 @@ p.a_grid        = -p.b:p.da_grid:p.b + params(7); % uncommented by TB
 %% 0 bin handled elsewhere
 %% fix grid sizes in compute_particles (3 places)
 %% set scale factors in compute_backwards_pass
-p.d_dex         = 6; % abs value of delta-mode to compute
+p.d_dex         = 6 * p.a_sign; % abs value of delta-mode to compute
 p.n             = 10000;
 p.error_tolerance = 0.0001;
 computet        = 0;
 plott           = 0;
 particlet       = 0;
-if ~data(TN).pokedR; p.d_dex = -p.d_dex;end;
 
 if length(unique(diff(p.avals))) > 1
     error('p.avals is not a uniform grid! I cannot verify solution for a non uniform evaluation grid. Proceed with EXTREME caution!');
@@ -77,68 +76,108 @@ forward = compute_pdf(forward,p.avals,p);
 forward.plot_zero_line = true;
 forward.plot_mean_line = false;
 forward.title = 'Forward';
+forward.right_click_marker = '|';
+forward.left_click_marker = '|';
+forward.left_clicks = data(TN).leftbups;
+forward.right_clicks = data(TN).rightbups;
+forward.right_click_y = 25;
+forward.left_click_y = -25;
+forward.click_height = 5;
 %%
-figure(1); 
+[~, alimi] = max(abs(p.a_grid));
+alim = p.a_grid(alimi);
+fh = figure(1); 
 clf; 
 subplot(2,4,1);
 plot_pdf(forward);
+
 plott = plott + toc;
 % compute backwards pass
 if p.compute_back;
 tic
 p = get_grid(data(TN), forward, params,p);
 [back, posterior] = compute_backwards_pass(data(TN),params,p,forward);
-computet= computet + toc;
+computet = computet + toc;
+
+%%
+bdex = find(back.a_grid == p.d_dex); % which mode to compute
+back = compute_pdf(back,p.avals,p,'mode',bdex);
+posterior = compute_pdf(posterior, p.avals,p,'mode',bdex);
+back.s = ones(size(back.ma))./50; %% DOES NOTHING
+backF = compute_pdf(back,p.avals,p,'mixture');
+posteriorF = compute_pdf(posterior, p.avals,p,'mixture');
+particle = compute_particles(data(TN), params, p);
 %%
 % visualize backwards pass - one delta solution
 tic
-bdex = find(back.a_grid == p.d_dex); % which mode to compute
-back = compute_pdf(back,p.avals,p,'mode',bdex);
 back.plot_zero_line = true;
 back.plot_mean_line = false;
-back.title = 'Backward Delta';
+back.title = sprintf('Backward \\delta, a_N = %i',p.d_dex);
+back.right_click_marker = '|';
+back.left_click_marker = '|';
+back.left_clicks = data(TN).leftbups;
+back.right_clicks = data(TN).rightbups;
+back.right_click_y = 25;
+back.left_click_y = -25;
+back.click_height = 5;
 subplot(2,4,2);
 plot_pdf(back);
-%%
+
 % visualize posterior - one delta solution
 subplot(2,4,3);
-%posterior.ma = back.pma;
-%posterior.va = back.pva;
-%posterior.s = back.ps;
-%posterior.T = back.T;
-posterior = compute_pdf(posterior, p.avals,p,'mode',bdex);
 posterior.plot_zero_line = true;
 posterior.plot_mean_line = false;
-posterior.title = 'Posterior Delta';
+posterior.title = sprintf('Posterior \\delta, a_N = %i',p.d_dex);
+posterior.right_click_marker = '|';
+posterior.left_click_marker = '|';
+posterior.left_clicks = data(TN).leftbups;
+posterior.right_clicks = data(TN).rightbups;
+posterior.right_click_y = 25;
+posterior.left_click_y = -25;
+posterior.click_height = 5;
 plot_pdf(posterior);
+% 
+% % visualize entire backwards pass
+% backF.plot_zero_line = true;
+% backF.plot_mean_line = false;
+% backF.title = 'Backward Full';
+% backF.right_click_marker = '|';
+% backF.left_click_marker = '|';
+% backF.left_clicks = data(TN).leftbups;
+% backF.right_clicks = data(TN).rightbups;
+% backF.right_click_y = 25;
+% backF.left_click_y = -25;
+% backF.click_height = 5;
+% subplot(2,4,5);
+% plot_pdf(backF);
 
-% visualize entire backwards pass
-back.s = ones(size(back.ma))./50; %% DOES NOTHING
-backF = compute_pdf(back,p.avals,p,'mixture');
-backF.plot_zero_line = true;
-backF.plot_mean_line = false;
-backF.title = 'Backward Full';
-subplot(2,4,5);
-plot_pdf(backF);
-%%
 % visualize entire posterior 
 subplot(2,4,4);
 plott = plott + toc;
 tic
-posteriorF = compute_pdf(posterior, p.avals,p,'mixture');
 computet = computet + toc;
 
 tic
 posteriorF.plot_zero_line = true;
 posteriorF.plot_mean_line = false;
-posteriorF.title = 'Posterior Full';
+if p.a_sign
+    posteriorF.title = sprintf('Posterior Full, a_N = U(0,%i)',alim);
+else
+    posteriorF.title = sprintf('Posterior Full, a_N = U(%i,0)',alim);
+end
+posteriorF.right_click_marker = '|';
+posteriorF.left_click_marker = '|';
+posteriorF.left_clicks = data(TN).leftbups;
+posteriorF.right_clicks = data(TN).rightbups;
+posteriorF.right_click_y = 25;
+posteriorF.left_click_y = -25;
+posteriorF.click_height = 5;
 plot_pdf(posteriorF);
 plott = plott + toc;
 end
 
-%%% particles
+%% particles
 tic
-particle = compute_particles(data(TN), params, p);
 particlet = particlet + toc;
 tic
 subplot(2,4,5);
@@ -147,7 +186,14 @@ forwardP.avals = particle.avals;
 forwardP.T = particle.T;
 forwardP.plot_zero_line = true;
 forwardP.plot_mean_line = false;
-forwardP.title = 'Forward Particle';
+forwardP.title = 'Particle Forward';
+forwardP.right_click_marker = '|';
+forwardP.left_click_marker = '|';
+forwardP.left_clicks = data(TN).leftbups;
+forwardP.right_clicks = data(TN).rightbups;
+forwardP.right_click_y = 25;
+forwardP.left_click_y = -25;
+forwardP.click_height = 5;
 plot_pdf(forwardP)
 
 subplot(2,4,6);
@@ -156,10 +202,16 @@ backP.avals = particle.avals;
 backP.T = particle.T;
 backP.plot_zero_line = true;
 backP.plot_mean_line = false;
-backP.title = 'Backward P-Delta';
+%backP.title = {'Particle Backward \delta'};
+backP.title = sprintf('Particle Backward \\delta, a_N = %i',p.d_dex);
+backP.right_click_marker = '|';
+backP.left_click_marker = '|';
+backP.left_clicks = data(TN).leftbups;
+backP.right_clicks = data(TN).rightbups;
+backP.right_click_y = 25;
+backP.left_click_y = -25;
+backP.click_height = 5;
 plot_pdf(backP)
-
-
 
 subplot(2,4,7);
 posteriorD.pdf = particle.dpdf;
@@ -167,29 +219,63 @@ posteriorD.avals = particle.avals;
 posteriorD.T = particle.T;
 posteriorD.plot_zero_line = true;
 posteriorD.plot_mean_line = false;
-posteriorD.title = 'Posterior P-Delta';
+posteriorD.title = sprintf('Particle Posterior \\delta, a_N = %i',p.d_dex);
+posteriorD.right_click_marker = '|';
+posteriorD.left_click_marker = '|';
+posteriorD.left_clicks = data(TN).leftbups;
+posteriorD.right_clicks = data(TN).rightbups;
+posteriorD.right_click_y = 25;
+posteriorD.left_click_y = -25;
+posteriorD.click_height = 5;
 plot_pdf(posteriorD)
 
 
-subplot(2,4,8);
+ax = subplot(2,4,8);
 posteriorP.pdf = particle.ppdf;
 posteriorP.avals = particle.avals;
 posteriorP.T = particle.T;
 posteriorP.plot_zero_line = true;
 posteriorP.plot_mean_line = false;
-posteriorP.title = 'Posterior Particle';
+
+if p.a_sign
+    posteriorP.title = sprintf('Posterior Particle Full, a_N = U(0,%i)',alim);
+else
+    posteriorP.title = sprintf('Posterior Particle Full, a_N = U(%i,0)',alim);
+end
+posteriorP.right_click_marker = '|';
+posteriorP.left_click_marker = '|';
+posteriorP.left_clicks = data(TN).leftbups;
+posteriorP.right_clicks = data(TN).rightbups;
+posteriorP.right_click_y = 25;
+posteriorP.left_click_y = -25;
+posteriorP.click_height = 5;
 plot_pdf(posteriorP)
 plott = plott + toc;
+axpos = get(ax,'position');
+colorbar
+drawnow
+set(ax,'position',axpos)
+%%
+allax = findall(fh,'type','axes');
+set(allax,'Box','off');
+ylim(allax,[-40 40]);
+end_color = dp.model_color;
+colormap(colormapLinear(end_color).^2)
+for aa = 1:length(allax)
+    caxis(allax(aa),[0 .1])
+    view(allax(aa),[90 90])
+end
 
-
-fig = gcf;
-fig.PaperUnits = 'inches';
-fig.PaperPosition = [0 0 16 12];
-fig.PaperPositionMode = 'Manual';
-fig.PaperSize = [16 12];
-print([pwd '/dev/figs/dist_check'], '-dsvg')
-
-
+fht = 2.5 * 2.5;
+fw  = 4/3*2.5 * 3.75;
+set(fh, 'position', [0 10 fw fht],'papersize',[fw fht],'paperpositionmode','auto')
+if p.a_sign > 0
+    print(fullfile(dp.fig_dir, 'dist_check_supp_right'), '-dsvg','-painters')
+else
+    print(fullfile(dp.fig_dir, 'dist_check_supp_left'), '-dsvg','-painters')
+end
+%%
+keyboard
 
 %% Numerical checks FORWARD
 figure;

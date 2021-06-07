@@ -5,20 +5,6 @@ if ~(length(params) == 8)
     error('this function only works for 8 parameter model')
 end
 
-% This block got moved to be shared with forward and backward computations
-% This function computes both within and across stream adapatation
-%[cl, cr]    = make_adapted_cat_clicks(trial.leftbups, trial.rightbups, params(5), params(6));
-%clicks      = [-cl  +cr];
-%times       = [trial.leftbups trial.rightbups];
-%times       = round(times/p.dt)*p.dt;
-%times = times - p.dt;
-%trial.T     = round(trial.T/p.dt)*p.dt;
-%numsteps    = round(trial.T/p.dt);
-%dtimes      = round(times*(1/p.dt));
-%trial.times = times;
-%trial.dtimes = dtimes;
-%trial.clicks = clicks;
-
 %%%%% Shifting one earlier for alignment
 % We have to do this because we don't want the increase in variance for the forward and backward models 
 % to kick in on the same timestep, because then we'd get double variance on that timestep. So we pick
