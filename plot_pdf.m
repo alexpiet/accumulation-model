@@ -6,6 +6,7 @@ function [] = plot_pdf(D)
 if ~isfield(D, 'zlimit'); D.zlimit = 0.15; end;
 %imagesc(D.avals, D.T, D.pdf, [0 .5])
 imagesc(D.T,D.avals,D.pdf',[0 D.zlimit])
+hold on
 xlabel('Time (s)', 'fontsize',12)
 ylabel('Accumulated Evidence (a)' ,'fontsize',12)
 %%
@@ -14,6 +15,13 @@ if D.plot_zero_line
     hold on;
     %plot([0 0], [D.T(1) D.T(end)],'m--','linewidth',2)
     plot([D.T(1) D.T(end)],[0 0],'color',[1 1 1].*.0,'linewidth',1)
+end
+
+if ~isfield(D, 'plot_bias_line'); D.plot_bias_line =0; end;
+if D.plot_bias_line
+    hold on;
+    %plot([0 0], [D.T(1) D.T(end)],'m--','linewidth',2)
+    plot([D.T(1) D.T(end)],[0 0]+D.bias_param,'color',[1 1 1].*.0,'linewidth',1)
 end
 
 if ~isfield(D, 'plot_mean_line'); D.plot_mean_line =0; end;
