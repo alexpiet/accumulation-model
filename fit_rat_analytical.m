@@ -1,4 +1,4 @@
-function [fit data savefile] = fit_rat_analytical(ratnames, varargin)
+function [fit, data, savefile] = fit_rat_analytical(ratnames, varargin)
 % fit_rat_analytical(ratnames)
 % Script for fitting Bing's accumulation model to the dynamic clicks task behavior
 % input:
@@ -19,10 +19,10 @@ addParameter(p, 'save_suffix','');
 addParameter(p, 'use_param',true(1,8));
 addParameter(p, 'param_default',[]);
 addParameter(p, 'vectorize',true);
-addParameter(p,'prior_mean', [nan 0 nan 0 nan nan nan nan]);
-addParameter(p,'prior_var', [nan 5.39 nan 1.87 nan nan nan nan]);
+addParameter(p,'prior_mean', [nan 0 nan 0 nan .1059 nan nan]);
+addParameter(p,'prior_var', [nan 5.39 nan 1.87 nan .01 nan nan]);
 addParameter(p, 'lower_bound', [ -40, 0,   0,    0,  0, 0.01, -20, 0]);
-addParameter(p, 'upper_bound', [ +40, 200, 5000, 30, 1.2, .7, +20, 1]);
+addParameter(p, 'upper_bound', [ +40, 200, 5000, 30, 1.2, 5, +20, 1]);
 addParameter(p, 'overwrite',0)
 addParameter(p, 'TolFun',1e-6)
 parse(p,varargin{:})
@@ -34,7 +34,7 @@ results_dir = par.results_dir;
 
 save_suffix = par.save_suffix;
 
-data = [];
+rawdata = [];
 
 if iscell(ratnames)
     for rr = 1:length(ratnames)
@@ -47,9 +47,9 @@ else
     %    parpool
     % Load data
     if isstruct(ratnames)
-        data = ratnames;
-        if isfield(data,'ratname')
-            ratname = data(1).ratname;
+        rawdata = ratnames;
+        if isfield(rawdata,'ratname')
+            ratname = rawdata(1).ratname;
         else
             ratname = ['unknown_' num2str(now)];
         end
@@ -65,7 +65,7 @@ else
         savefile = fullfile(results_dir, ['fit_analytical_' ratname ...
             save_suffix '.mat']);
         if exist(savefile,'file') & ~par.overwrite
-            fprintf('loading existing file...')
+            fprintf('loading existing accumulation fit file...')
             load(savefile)
             return
         end
@@ -119,10 +119,14 @@ else
         extra_args{end+1} = par.param_default;
     end
     
-    pokedR      = [data.pokedR]';
-    stim_dur    = [data.T];
+    if ~exist('data','var') & exist('rawdata','var')
+        data = rawdata;
+    end
+    
+    pokedR      = [rawdata.pokedR]';
+    stim_dur    = [rawdata.T];
     if par.vectorize
-        [buptimes,nantimes,streamIdx] = vectorize_clicks({data.leftbups}, {data.rightbups});
+        [buptimes,nantimes,streamIdx] = vectorize_clicks({rawdata.leftbups}, {rawdata.rightbups});
         
         nllfun = @(params) compute_LL_vectorized(buptimes,streamIdx,...
             stim_dur, pokedR, params,...
@@ -134,7 +138,7 @@ else
         opts.dt = .001;
         fill_params = @(params) fill_defaults(params,par.use_param,...
             par.param_default);
-        nllfun = @(params)  compute_LL(data, fill_params(params), opts);
+        nllfun = @(params)  compute_LL(rawdata, fill_params(params), opts);
         
     end
     
@@ -149,12 +153,12 @@ else
     bf_full(use_param) = xbf;
     
     if par.vectorize
-        [~, ~, ~, ~, ~, pr] = compute_LL_vectorized(buptimes,streamIdx,...
+        [~, ma, va, ~, ~, pr] = compute_LL_vectorized(buptimes,streamIdx,...
             stim_dur, pokedR, xbf,...
             'prior_var',prior_var,'prior_mean',prior_mean,...
             'nantimes', nantimes, extra_args{:});
     else
-        [~, pr] = compute_LL(data, fill_params(xbf_full), opts);
+        [~, ma, va, pr] = compute_LL(rawdata, fill_params(xbf_full), opts);
     end
     
     
@@ -170,7 +174,10 @@ else
     fit.grad        = grad;
     fit.hessian     = hessian;
     fit.nt          = length(pokedR);
+    fit.fpt         = exp(-fit.f/fit.nt);
     fit.pr          = pr;
+    fit.a_mu        = ma;
+    fit.a_var       = va;
     fit.datafile    = datafile;
     fit.datenum     = datetime;
     fit.use_param   = par.use_param;
