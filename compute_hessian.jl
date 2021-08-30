@@ -10,11 +10,12 @@ include("/Users/oroville/projects/pbups_dyn/code/accumulation-model/compute_LL.j
 
 # move to directory with the fits
 res_dir = "/users/oroville/projects/pbups_dyn/results/"
-cd(res_dir)
+res_dir = "/users/oroville/projects/waiting/results/"
+#cd(res_dir)
 # which model fitting group to look at
 group = "ephys";
 rats = ["H037", "H066", "H084", "H129", "H140", "H191"];
-
+rats = ["Z255", "Z256", "Z258", "J244"];
 # which rats to use, all with H0- prefix
 ##rats = [33 37 38 39 40 43 45 58 61 65 66 67 83 84];
 ##rats = ["B052", "B053", "B065", "B069", "B074", "B083", "B090", "B093", "B097", "B102", "B103", "B104", "B105", "B106", "B107", "B111", "B112", "B113", "B115"];
@@ -39,8 +40,8 @@ overwrite = true;
 for i = 1:length(filestr) 
     # load model parameters at MLE point from matlab
     file_suffix = filestr[i]
-    fn = "fit_analytical_"*file_suffix*".mat";
-    save_path = "julia_hessian_"*file_suffix*".mat"
+    fn = res_dir*"fit_analytical_"*file_suffix*".mat";
+    save_path = res_dir*"julia_hessian_"*file_suffix*".mat"
     println(fn)
     if isfile(save_path) & !overwrite
         println("already saved hessian"*file_suffix) 
@@ -50,17 +51,26 @@ for i = 1:length(filestr)
     if ~isfile(fn)
         error("couldn't find that file")
     end
-    try
+    #try
+        println(fn)
         fit_data= matread(fn);
         println("fit loaded")
         fit     = fit_data["fit"];
-        data    = fit_data["data"];
+        println("found field fit")
+        data    = fit_data["data"]
+        nt = length(data["pokedR"])
+        println(string(nt)*" trials in this dataset")
+        println("found field data")
         params  = fit["final"];
-    catch
-        println("problem loading file")
-    end
+        println("found field final")
+    #catch
+    #    println("problem loading file")
+    #end
+    nt = length(data["pokedR"])
+    println(string(nt)*" trials in this dataset")
     # evaluate model LL just to make sure its correct
     NLL = compute_LL(data, params);
+    println(NLL)
     if abs(NLL -  fit["f"]) > 1
         println("Oh no! Julia version is not within tolerance of MATLAB values")
         temp = NLL - fit["f"];
