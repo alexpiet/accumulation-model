@@ -91,4 +91,10 @@ function [NLL_total, mean_a,var_a, NLL, p_chosen, p_chooseR] = ...
         error('%g trials had non-finite log likelihoods!',sum(~isfinite(NLL)));
     end
     NLL_total = sum(NLL) + prior_cost;
+    
+    mean_a      = mean_a';
+    var_a       = var_a';
+    NLL         = NLL';
+    p_chosen    = p_chosen';
+    p_chooseR   = p_chooseR';
 end
