@@ -17,7 +17,7 @@ dd = zeros(length(p.avals), numsteps);
 [cl, cr]    = make_adapted_cat_clicks(trial.leftbups, trial.rightbups, params(5), params(6));
 
 %slight timing offset on click times because make_click_inputs35 uses qfind, whereas compute_full_trial rounds click times and then bins. The following code is a little messy because it attempts to counteract qfind. I should really just not use make_click_inputs35, but the error is only off by 1 dt, so it doesn't really matter. 
-tvec = 0:p.dt:trial.T;
+tvec = p.dt:p.dt:trial.T;
 [difflr, sumlr] = make_click_inputs35(tvec, trial.leftbups, trial.rightbups, cl, cr);
 %trial.leftbups = round(trial.leftbups/p.dt)*p.dt;
 %trial.rightbups = round(trial.rightbups/p.dt)*p.dt;
