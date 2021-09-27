@@ -54,7 +54,10 @@ end
 
 % Per-click noise
 for i=1:length(trial.clicks);
-    va(trial.dtimes(i):end) = va(trial.dtimes(i):end) + c_var*abs(trial.clicks(i))*exp(2*params(1)*((trial.times(i):p.dt:trial.T) -trial.times(i)));
+    ind = trial.dtimes(i):length(va);
+    tx  = (trial.times(i):p.dt:trial.T) -trial.times(i);
+    tc  = trial.clicks(i);
+    va(ind) = va(ind) + c_var*abs(tc)*exp(2*params(1)*(tx));
 end
 
 % Pack up vector of means, variance, and timepoints. 
