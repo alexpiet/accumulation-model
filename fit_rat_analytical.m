@@ -28,13 +28,12 @@ addParameter(p, 'TolFun',1e-6)
 parse(p,varargin{:})
 
 
-par = p.Results;
-data_dir = par.data_dir;
+par         = p.Results;
+data_dir    = par.data_dir;
 results_dir = par.results_dir;
-
 save_suffix = par.save_suffix;
-
-rawdata = [];
+rawdata     = [];
+data        = [];
 
 if iscell(ratnames)
     for rr = 1:length(ratnames)
