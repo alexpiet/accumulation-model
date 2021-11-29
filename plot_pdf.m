@@ -67,7 +67,7 @@ if isfield(D, 'left_clicks');
         nl = length(D.left_clicks);
         xx = [D.left_clicks; D.left_clicks]';
         yy =  D.left_click_y-repmat([0 1],nl,1).*D.click_height;
-        plot(xx', yy',  '-', 'color', left_color)
+        plot(xx', yy',  '-', 'color', left_color, 'linewidth', 1.5)
     else
         plot(D.left_clicks, D.left_click_y,  D.left_click_marker, ...
             'color',left_color,'markerfacecolor','w',...
@@ -83,7 +83,7 @@ if isfield(D, 'right_clicks');
         nr = length(D.right_clicks);
         xx = [D.right_clicks; D.right_clicks]';
         yy =  D.right_click_y+repmat([0 1],nr,1).*D.click_height;
-        plot(xx', yy',  '-', 'color', right_color)
+        plot(xx', yy',  '-', 'color', right_color, 'linewidth', 1.5)
     else
         plot(D.right_clicks, D.right_click_y,  D.right_click_marker, ...
             'color',right_color,'markerfacecolor','w',...
