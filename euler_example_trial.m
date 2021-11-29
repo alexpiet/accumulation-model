@@ -1,22 +1,31 @@
-% set agent parameters
-param_names = {'\lambda', '\sigma_a', '\sigma_s', '\sigma_i', '\phi',  '\tau', 'bias', 'lapse'};
-params = [0 1 1 0 .5 .1 0 0];
-lambda = params(1); var_a = params(2); var_s = params(3); var_init = params(4);
-phi = params(5); tau_phi = params(6); bias = params(7); lapse = params(8); 
-bound = Inf; 
-n_particles = 100;
-n = n_particles;
-n_to_plot = 5;
-
-% make clicks
+%% user parameters to modify
+% click parameters
 total_rate = 40;
 gamma = .5;
+trial_duration  = 1;
+dt = 1e-3;
+
+% agent parameters
+lambda = .25; % positive values -> instability; negative values -> leak
+var_a = 0.1; % variance of noise applied at each time step
+var_s = 1; % variance of noise applied with each click input
+var_init = 1; % variance of noise applied at beginning of trial
+phi = .4; % adaptation strength: >1 -> facilitation; <1-> depression
+tau_phi = .2; % timescale of adaptation
+bias = 1; % go right if a > bias
+lapse = 0; % fraction of time where agent chooses randomly; not used here.
+bound = Inf; % height of absorbing bound; will not be reflected by analytical model
+n_particles = 100; % number of particles to simulate
+n_to_plot = 5; % number of particles to plot
+
+% name 
+params = [lambda, var_a, var_s, var_init, phi, tau_phi, bias, lapse];
+
+% make clicks
 l_rate = total_rate ./ (exp( gamma) + 1);
 r_rate = total_rate - l_rate;
+tvec = 0:dt:trial_duration;
 
-T  = 1;
-dt = 1e-3;
-tvec = 0:dt:T;
 % set up the random seed that determines the noise realizations
 rng(2)
 lbupvec = rand(size(tvec)) < l_rate*dt;
@@ -29,6 +38,7 @@ rb = tvec(find(rbupvec));
 [difflr, sumlr] = make_click_inputs35(tvec, lb, rb, cl, cr);
 
 % simulate particles
+n = n_particles;
 init_noise = sqrt(var_init).*randn(n,1);
 a = zeros(n,length(tvec));
 a(:,1) = init_noise;
@@ -81,7 +91,7 @@ xlabel('time (s)')
 final_a = a(:,end);
 a_greater_than_bias = final_a > bias;
 
-ylim(1.25*ylim)
+ylim([min(final_a) max(final_a)])
 text(0.05, .8*max(ylim), sprintf(['\\lambda=%.1f, \\sigma^2_a=%.1f, \\sigma^2_i=%.1f, '...
     '\\sigma^2_s=%.1f, \\phi=%.1f, \\tau_{\\phi}=%.2f, bias=%.1f'],...
     lambda, var_a, var_init, var_s, phi, tau_phi, bias),'fontsize',13)
@@ -93,7 +103,7 @@ buptimes = [lb rb];
 streamIdx = [-ones(size(lb)) ones(size(rb))]
 [buptimes,nantimes,streamIdx] = vectorize_clicks({lb},{rb})
 [~, ma, va, ~, ~, pr] = compute_LL_vectorized(buptimes,streamIdx,...
-            T, 1, params(1:8), 'nantimes', nantimes)
+            trial_duration, 1, params(1:8), 'nantimes', nantimes)
         
 subplot(3,3,[6 9])
 h = histogram(final_a,10,'normalization','pdf','facecolor',[1 1 1].*.75)
