@@ -1,24 +1,26 @@
 %% user parameters to modify
 % click parameters
 total_rate = 40;
-gamma = .5;
+gamma = 1;
 trial_duration  = 1;
 dt = 1e-3;
 
 % agent parameters
-lambda = .25; % positive values -> instability; negative values -> leak
-var_a = 0.1; % variance of noise applied at each time step
-var_s = 1; % variance of noise applied with each click input
-var_init = 1; % variance of noise applied at beginning of trial
-phi = .4; % adaptation strength: >1 -> facilitation; <1-> depression
-tau_phi = .2; % timescale of adaptation
-bias = 1; % go right if a > bias
-lapse = 0; % fraction of time where agent chooses randomly; not used here.
+lambda = -.4; % positive values -> instability; negative values -> leak
+var_a = 0; % variance of noise applied at each time step
+var_s = 36.6/total_rate; % variance of noise applied with each click input - multiply by total_rate to get bing's units
+var_init = .1; % variance of noise applied at beginning of trial
+phi = .15; % adaptation strength: >1 -> facilitation; <1-> depression
+tau_phi = .14; % timescale of adaptation
+bias = -.18; % go right if a > bias
+lapse = .1; % fraction of time where agent chooses randomly; not used here.
 bound = Inf; % height of absorbing bound; will not be reflected by analytical model
-n_particles = 100; % number of particles to simulate
+
+% simulation parameters
+n_particles = 500; % number of particles to simulate
 n_to_plot = 5; % number of particles to plot
 
-% name 
+% don't modify beyond here 
 params = [lambda, var_a, var_s, var_init, phi, tau_phi, bias, lapse];
 
 % make clicks
@@ -30,6 +32,8 @@ tvec = 0:dt:trial_duration;
 rng(2)
 lbupvec = rand(size(tvec)) < l_rate*dt;
 rbupvec = rand(size(tvec)) < r_rate*dt;
+lbupvec(1) = 1;
+rbupvec(1) = 1;
 lb = tvec(find(lbupvec));
 rb = tvec(find(rbupvec));
 
@@ -46,10 +50,11 @@ for ii=2:length(tvec)
     last_a = a(:,ii-1);
     to_update = abs(last_a ) < bound;
     n = sum(to_update);
-    new_a = last_a(to_update) ...
-        + dt*lambda.*last_a(to_update) ...
-        + difflr(ii-1) + sqrt(sumlr(ii-1)*var_s).*randn(n,1) ...
-        + sqrt(var_a*dt).*randn(n,1);
+    new_a = last_a(to_update) ... % previous value
+        + dt*lambda.*last_a(to_update) ... % effect of leak/instability
+        + difflr(ii-1) ... % effect of clicks in this timestep
+        + sqrt(sumlr(ii-1)*var_s).*randn(n,1) ... % noise due to clicks
+        + sqrt(var_a*dt).*randn(n,1); % accumulator noise 
     hit_bound = abs(new_a ) >= bound;
     new_a(hit_bound) = bound*sign(new_a(hit_bound));
     a(to_update,ii) = new_a;
@@ -59,22 +64,26 @@ end
 
 % plot the clicks and the particles
 fh = figure(1); clf
-set(fh,'units','inches','position',[5 5 10 5])
+set(fh,'units','inches','position',[0 5 12 6])
 subplot(3,3,[1 2])
 left_color = [.75 1 .75];
 right_color = [.75 .75 1];
-plot(repmat(rb,2,1),[0; 1], '-','color',left_color,'linewidth',1.5)
+if ~isempty(rb)
+    plot(repmat(rb,2,1),[0; 1], '-','color', right_color,'linewidth',1.5)
+end
 hold on
-plot(repmat(lb,2,1),[0; -1], '-','color',right_color,'linewidth',1.5)
+if ~isempty(lb)
+    plot(repmat(lb,2,1),[0; -1], '-','color', left_color,'linewidth',1.5)
+end
 text(-.05, 1.5, 'clicks','fontsize',15)
 text(.1, 1.5, 'left','fontsize',15, 'color', left_color)
 text(.4, 1.5, 'right','fontsize',15, 'color', right_color)
 
 left_color = [.05 .85 .05];
 right_color = [.05 .05 .85];
-plot(repmat(rb,2,1),[zeros(size(cr)); cr], '-','color',left_color,'linewidth',2)
+plot(repmat(rb,2,1),[zeros(size(cr)); cr], '-','color', right_color,'linewidth',2)
 hold on
-plot(repmat(lb,2,1),[zeros(size(cl)); -cl], '-','color',right_color,'linewidth',2)
+plot(repmat(lb,2,1),[zeros(size(cl)); -cl], '-','color', left_color,'linewidth',2)
 axis off
 text(.2, 1.5, 'adapted','fontsize',15, 'color', left_color)
 text(.5, 1.5, 'adapted','fontsize',15, 'color', right_color)
