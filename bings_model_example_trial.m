@@ -1,7 +1,7 @@
 %% user parameters to modify
 % click parameters
-total_rate = 40;
-gamma = 1;
+total_rate = 40; % left and right rates sum to this value
+gamma = .5; % log ratio of the left and right gamma = log(r_R/r_L)
 trial_duration  = 1;
 dt = 1e-3;
 
@@ -14,7 +14,10 @@ phi = .15; % adaptation strength: >1 -> facilitation; <1-> depression
 tau_phi = .14; % timescale of adaptation
 bias = -.18; % go right if a > bias
 lapse = .1; % fraction of time where agent chooses randomly; not used here.
-bound = Inf; % height of absorbing bound; will not be reflected by analytical model
+bound = 5; % height of absorbing bound; will not be reflected by analytical model
+
+w_l = 1;
+w_r = 1;
 
 % simulation parameters
 n_particles = 500; % number of particles to simulate
@@ -39,7 +42,9 @@ rb = tvec(find(rbupvec));
 
 % apply click adaptation
 [cl, cr]    = make_adapted_cat_clicks(lb, rb, phi, tau_phi);
-[difflr, sumlr] = make_click_inputs35(tvec, lb, rb, cl, cr);
+wcl = cl*w_l;
+wcr = cr*w_r;
+[difflr, sumlr] =  make_click_inputs35(tvec, lb, rb, wcl, wcr);
 
 % simulate particles
 n = n_particles;
@@ -66,21 +71,24 @@ end
 fh = figure(1); clf
 set(fh,'units','inches','position',[0 5 12 6])
 subplot(3,3,[1 2])
-left_color = [.75 1 .75];
-right_color = [.75 .75 1];
+right_color = [.05 .85 .05];
+left_color = [.05 .05 .85];
+lighter = @(x) hsv2rgb(rgb2hsv(x) .* [1 .2 1]);
+right_color_light = lighter(right_color);
+left_color_light = lighter(left_color);
 if ~isempty(rb)
-    plot(repmat(rb,2,1),[0; 1], '-','color', right_color,'linewidth',1.5)
+    plot(repmat(rb,2,1),[0; 1], '-','color',...
+    right_color_light,'linewidth',1.5)
 end
 hold on
 if ~isempty(lb)
-    plot(repmat(lb,2,1),[0; -1], '-','color', left_color,'linewidth',1.5)
+    plot(repmat(lb,2,1),[0; -1], '-','color', left_color_light,'linewidth',1.5)
 end
 text(-.05, 1.5, 'clicks','fontsize',15)
-text(.1, 1.5, 'left','fontsize',15, 'color', left_color)
-text(.4, 1.5, 'right','fontsize',15, 'color', right_color)
+text(.1, 1.5, 'left','fontsize',15, 'color', left_color_light)
+text(.4, 1.5, 'right','fontsize',15, 'color', right_color_light)
 
-left_color = [.05 .85 .05];
-right_color = [.05 .05 .85];
+
 plot(repmat(rb,2,1),[zeros(size(cr)); cr], '-','color', right_color,'linewidth',2)
 hold on
 plot(repmat(lb,2,1),[zeros(size(cl)); -cl], '-','color', left_color,'linewidth',2)
@@ -89,23 +97,39 @@ text(.2, 1.5, 'adapted','fontsize',15, 'color', left_color)
 text(.5, 1.5, 'adapted','fontsize',15, 'color', right_color)
 box off
 
-ax2 = subplot(3,3,[4 5 7 8])
+text(1.125, 1.2, ['$\log \frac{r_R}{r_L}=$' num2str(gamma)] ,...
+    'fontsize',17, 'interpreter','latex')
+text(1.125, .5, sprintf('$r_R=%.1f$ clicks $s^{-1}$',r_rate), ...
+    'fontsize',17, 'interpreter','latex','color',right_color)
+text(1.125, -.5, sprintf('$r_L=%.1f$ clicks $s^{-1}$',l_rate), ...
+    'fontsize',17, 'interpreter','latex','color',left_color)
+
+
 % plot particles
-plot(tvec, a(1:n_to_plot,:) ,'linewidth', 1.5)
+
+ax2 = subplot(3,3,[4 5 7 8])
+
+plot(tvec, a(1:n_to_plot,:) ,'linewidth', 1.5,'color',[1 1 1].*.4)
 hold on
 plot(tvec([1 end]), bias*[1 1], '--k')
 box off
-ylabel('a')
+ylabel('accumulation value, a','fontsize',18)
 xlabel('time (s)')
 final_a = a(:,end);
 a_greater_than_bias = final_a > bias;
 
 ylim([min(final_a) max(final_a)])
-text(0.05, .8*max(ylim), sprintf(['\\lambda=%.1f, \\sigma^2_a=%.1f, \\sigma^2_i=%.1f, '...
+ylims = ylim(ax2)
+if ylims(2) > .9*bound
+    ylims(2) = 1.3*bound
+end
+ylim(ax2,ylims)
+
+text(0.05, .9*max(ylim), sprintf(['\\lambda=%.1f, \\sigma^2_a=%.1f, \\sigma^2_i=%.1f, '...
     '\\sigma^2_s=%.1f, \\phi=%.1f, \\tau_{\\phi}=%.2f, bias=%.1f'],...
     lambda, var_a, var_init, var_s, phi, tau_phi, bias),'fontsize',13)
 
-text(.1, 1.0*max(ylim), sprintf('a>bias for %i/%i particles with parameters', sum(a_greater_than_bias), n_particles), 'fontsize', 15)
+text(.1, 1.1*max(ylim), sprintf('a>bias for %i/%i particles with parameters', sum(a_greater_than_bias), n_particles), 'fontsize', 15)
 
 
 buptimes = [lb rb];
@@ -123,10 +147,14 @@ plot(xx,normpdf(xx,ma,sqrt(va)),'r-')
 view(-90,90);
 box off
 xlim(get(ax2,'ylim'))
-title('final value of a','fontweight','normal')
+title('Final value of a','fontweight','normal')
 %xlabel('a')
 ylabel('% realizations')
 axis ij
 plot([1 1]*bias,ylim,'k--')
 text(bias,max(ylim)*.8, 'bias','fontsize',12)
-legend('simulation','model','location','northeast')
+hl = legend('simulation (has bound)','model (no bound)','location','southeast')
+box(hl,'off')
+hl.Position = hl.Position + [.05 0 0 0]
+
+
