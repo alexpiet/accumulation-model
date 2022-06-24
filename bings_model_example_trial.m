@@ -23,6 +23,11 @@ w_r = 1;
 n_particles = 500; % number of particles to simulate
 n_to_plot = 5; % number of particles to plot
 
+% plot colors
+model_color = [1 .6 .6];
+right_color = [.05 .85 .05];
+left_color = [.05 .05 .85];
+
 % don't modify beyond here 
 params = [lambda, var_a, var_s, var_init, phi, tau_phi, bias, lapse];
 
@@ -70,9 +75,8 @@ end
 % plot the clicks and the particles
 fh = figure(1); clf
 set(fh,'units','inches','position',[0 5 12 6])
-subplot(3,3,[1 2])
-right_color = [.05 .85 .05];
-left_color = [.05 .05 .85];
+ax1= subplot(3,3,[1 2])
+
 lighter = @(x) hsv2rgb(rgb2hsv(x) .* [1 .2 1]);
 right_color_light = lighter(right_color);
 left_color_light = lighter(left_color);
@@ -109,7 +113,8 @@ text(1.125, -.5, sprintf('$r_L=%.1f$ clicks $s^{-1}$',l_rate), ...
 
 ax2 = subplot(3,3,[4 5 7 8])
 
-plot(tvec, a(1:n_to_plot,:) ,'linewidth', 1.5,'color',[1 1 1].*.4)
+plot(tvec, a(1:n_to_plot,:) ,'linewidth', 1.5,'color',...
+    model_color)
 hold on
 plot(tvec([1 end]), bias*[1 1], '--k')
 box off
@@ -118,7 +123,7 @@ xlabel('time (s)')
 final_a = a(:,end);
 a_greater_than_bias = final_a > bias;
 
-ylim([min(final_a) max(final_a)])
+ylim([min(a(:)) max(a(:))])
 ylims = ylim(ax2)
 if ylims(2) > .9*bound
     ylims(2) = 1.3*bound
@@ -139,11 +144,12 @@ streamIdx = [-ones(size(lb)) ones(size(rb))]
             trial_duration, 1, params(1:8), 'nantimes', nantimes)
         
 subplot(3,3,[6 9])
-h = histogram(final_a,10,'normalization','pdf','facecolor',[1 1 1].*.75)
+h = histogram(final_a,20,'normalization','pdf',...
+    'facecolor',model_color)
 
 hold on
 xx = linspace(min(final_a),max(final_a),100);
-plot(xx,normpdf(xx,ma,sqrt(va)),'r-')
+plot(xx,normpdf(xx,ma,sqrt(va)),'r-','linewidth',2)
 view(-90,90);
 box off
 xlim(get(ax2,'ylim'))
@@ -156,5 +162,5 @@ text(bias,max(ylim)*.8, 'bias','fontsize',12)
 hl = legend('simulation (has bound)','model (no bound)','location','southeast')
 box(hl,'off')
 hl.Position = hl.Position + [.05 0 0 0]
-
+linkaxes([ax1,ax2],'x')
 
