@@ -42,7 +42,7 @@ lbupvec = rand(size(tvec)) < l_rate*dt;
 rbupvec = rand(size(tvec)) < r_rate*dt;
 lbupvec(1) = 1;
 rbupvec(1) = 1;
-lb = tvec(find(lbupvec));
+lb = tvec(find(lbupvec)); %#ok<*FNDSB> 
 rb = tvec(find(rbupvec));
 
 % apply click adaptation
@@ -60,14 +60,16 @@ for ii=2:length(tvec)
     last_a = a(:,ii-1);
     to_update = abs(last_a ) < bound;
     n = sum(to_update);
-    new_a = last_a(to_update) ... % previous value
-        + dt*lambda.*last_a(to_update) ... % effect of leak/instability
-        + difflr(ii-1) ... % effect of clicks in this timestep
-        + sqrt(sumlr(ii-1)*var_s).*randn(n,1) ... % noise due to clicks
-        + sqrt(var_a*dt).*randn(n,1); % accumulator noise 
-    hit_bound = abs(new_a ) >= bound;
-    new_a(hit_bound) = bound*sign(new_a(hit_bound));
-    a(to_update,ii) = new_a;
+    if n
+        new_a = last_a(to_update) ... % previous value
+            + dt*lambda.*last_a(to_update) ... % effect of leak/instability
+            + difflr(ii-1) ... % effect of clicks in this timestep
+            + sqrt(sumlr(ii-1)*var_s).*randn(n,1) ... % noise due to clicks
+            + sqrt(var_a*dt).*randn(n,1); % accumulator noise 
+        hit_bound = abs(new_a ) >= bound;
+        new_a(hit_bound) = bound*sign(new_a(hit_bound));
+        a(to_update,ii) = new_a;
+    end
     a(~to_update,ii) = a(~to_update,ii-1);
             
 end
@@ -75,7 +77,7 @@ end
 % plot the clicks and the particles
 fh = figure(1); clf
 set(fh,'units','inches','position',[0 5 12 6])
-ax1= subplot(3,3,[1 2])
+ax1= subplot(3,3,[1 2]);
 
 lighter = @(x) hsv2rgb(rgb2hsv(x) .* [1 .2 1]);
 right_color_light = lighter(right_color);
@@ -111,7 +113,7 @@ text(1.125, -.5, sprintf('$r_L=%.1f$ clicks $s^{-1}$',l_rate), ...
 
 % plot particles
 
-ax2 = subplot(3,3,[4 5 7 8])
+ax2 = subplot(3,3,[4 5 7 8]);
 
 plot(tvec, a(1:n_to_plot,:) ,'linewidth', 1.5,'color',...
     model_color)
@@ -124,9 +126,9 @@ final_a = a(:,end);
 a_greater_than_bias = final_a > bias;
 
 ylim([min(a(:)) max(a(:))])
-ylims = ylim(ax2)
+ylims = ylim(ax2);
 if ylims(2) > .9*bound
-    ylims(2) = 1.3*bound
+    ylims(2) = 1.3*bound;
 end
 ylim(ax2,ylims)
 
@@ -137,15 +139,13 @@ text(0.05, .9*max(ylim), sprintf(['\\lambda=%.1f, \\sigma^2_a=%.1f, \\sigma^2_i=
 text(.1, 1.1*max(ylim), sprintf('a>bias for %i/%i particles with parameters', sum(a_greater_than_bias), n_particles), 'fontsize', 15)
 
 
-buptimes = [lb rb];
-streamIdx = [-ones(size(lb)) ones(size(rb))]
-[buptimes,nantimes,streamIdx] = vectorize_clicks({lb},{rb})
+[buptimes,nantimes,streamIdx] = vectorize_clicks({lb},{rb});
 [~, ma, va, ~, ~, pr] = compute_LL_vectorized(buptimes,streamIdx,...
-            trial_duration, 1, params(1:8), 'nantimes', nantimes)
+            trial_duration, 1, params(1:8), 'nantimes', nantimes);
         
 subplot(3,3,[6 9])
 h = histogram(final_a,20,'normalization','pdf',...
-    'facecolor',model_color)
+    'facecolor',model_color);
 
 hold on
 xx = linspace(min(final_a),max(final_a),100);
@@ -159,8 +159,8 @@ ylabel('% realizations')
 axis ij
 plot([1 1]*bias,ylim,'k--')
 text(bias,max(ylim)*.8, 'bias','fontsize',12)
-hl = legend('simulation (has bound)','model (no bound)','location','southeast')
+hl = legend('simulation (has bound)','model (no bound)','location','southeast');
 box(hl,'off')
-hl.Position = hl.Position + [.05 0 0 0]
+hl.Position = hl.Position + [.05 0 0 0];
 linkaxes([ax1,ax2],'x')
 
