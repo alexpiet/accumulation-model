@@ -3,10 +3,9 @@
 % load example fit and dataset
 dp = set_dyn_path(1);
 ex_rat = 'H084';
-model_fit_fn = fullfile(dp.model_fits_dir, ['fit_analytical_' ex_rat '.mat'])
 
 fit = fit_rat_analytical(ex_rat,'data_dir',dp.data_dir,'results_dir',dp.model_fits_dir);
-load(fit.datafile)
+load(fullfile(dp.data_dir,ex_rat));
 %%
 
 % set up parameters
@@ -334,7 +333,7 @@ fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 9 9];
 fig.PaperPositionMode = 'Manual';
 fig.PaperSize = [9 9 ];
-print([pwd '/dev/figs/forward_check'], '-dpdf')
+%print([pwd '/dev/figs/forward_check'], '-dpdf')
 
 %% Numerical checks BACKWARDS-DELTA
 figure;
@@ -391,7 +390,7 @@ fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 9 9];
 fig.PaperPositionMode = 'Manual';
 fig.PaperSize = [9 9 ];
-print([pwd '/dev/figs/backward_delta_check'], '-dpdf')
+%print([pwd '/dev/figs/backward_delta_check'], '-dpdf')
 
 %% Numerical checks  POSTERIOR-DELTA
 figure;
@@ -450,12 +449,12 @@ fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 9 9];
 fig.PaperPositionMode = 'Manual';
 fig.PaperSize = [9 9 ];
-print([pwd '/dev/figs/posterior_delta_check'], '-dpdf')
+%print([pwd '/dev/figs/posterior_delta_check'], '-dpdf')
 
 % POSTERIOR-FULL
 % load reference posterior
 if TN == 1
-load('reference_posterior.mat');
+load(fullfile(dp.data_dir,'reference_posterior.mat'));
 end
 
 figure;
@@ -566,7 +565,7 @@ fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 9 9];
 fig.PaperPositionMode = 'Manual';
 fig.PaperSize = [9 9 ];
-print([pwd '/dev/figs/posterior_check'], '-dpdf')
+%print([pwd '/dev/figs/posterior_check'], '-dpdf')
 
 disp(['Time:'])
 disp(['Analytic Computation : ' num2str(computet) ' seconds'])
@@ -579,6 +578,6 @@ if p.save_new_ref;
     ref.pfva = pfva;
     ref.posteriorF = posteriorF;
     ref.posteriorP = posteriorP;
-    save('reference_posterior.mat','ref');
+    save(fullfile(dp.data_dir,'reference_posterior.mat'),'ref');
 end   
 
