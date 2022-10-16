@@ -28,7 +28,7 @@ function [NLL_total, mean_a,var_a, NLL, p_chosen, p_chooseR] = ...
     % use default params where necessary
     params_full = params.param_default;
     params_full(logical(params.use_param)) = param_set;    
-    
+    lambda = params_full(1);
     %% apply adaptation
     if abs(params_full(5) - 1) > eps    
         adapted = adapt_vectorized_clicks(buptimes,nantimes, params_full(5), params_full(6)) .* streamIdx;
@@ -36,19 +36,21 @@ function [NLL_total, mean_a,var_a, NLL, p_chosen, p_chooseR] = ...
         adapted=streamIdx;
         adapted(nantimes)=nan;
     end
-    temp = exp(params_full(1)*bsxfun(@minus,stim_duration,buptimes));
+    temp = exp(lambda*bsxfun(@minus,stim_duration,buptimes));
     %% compute mean of distribution 
     mean_a = nansum(adapted.*temp);
     %% compute variance of distribution
     % Three components: initial (parameters(4)), accumulation (parameters(2)), and per-click (parameters(3))
+    
     init_var = max(eps,params_full(4));
     a_var = max(eps,params_full(2));
     c_var = max(eps,params_full(3));
     % Initial variance and accumulation variance
-    if abs(params_full(1)) < 1e-10
-        s2 = init_var*exp(2*params_full(1)*stim_duration) + a_var*stim_duration;
+    if abs(lambda) < 1e-10
+        s2 = init_var*exp(2*lambda*stim_duration) + a_var*stim_duration;
     else
-        s2 = init_var*exp(2*params_full(1)*stim_duration) + (a_var./(2*params_full(1)))*(exp(2*params_full(1)*stim_duration)-1);
+        s2 = init_var*exp(2*lambda*stim_duration) + ...
+            (a_var./(2*lambda))*(exp(2*lambda*stim_duration)-1);
     end  
     % Add per-click variance
     if strcmp('std',params.adaptation_scales_perclick)
