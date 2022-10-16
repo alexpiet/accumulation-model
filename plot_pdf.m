@@ -3,8 +3,15 @@ function [] = plot_pdf(D)
 % D.plot_zero_line, will plot a dashed line at a=0
 % D.plot_mean_line, will plot a line at the mean of the PDF at each timepoint
 
-left_color = [48 127 255]./255;
-right_color = [0 140 54]./255 ;
+if ~isfield(D, 'left_color')
+    D.left_color = [48 127 255]./255;
+end
+if ~isfield(D, 'right_color')
+    D.right_color = [0 140 54]./255 ;
+end
+left_color = D.left_color;
+right_color = D.right_color;
+
 
 if ~isfield(D, 'zlimit'); D.zlimit = 0.15; end;
 %imagesc(D.avals, D.T, D.pdf, [0 .5])
