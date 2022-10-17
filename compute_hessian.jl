@@ -43,7 +43,8 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     # evaluate model LL just to make sure its correct
     NLL = compute_LL(data, params);
     println(NLL)
-    if abs(NLL -  fit["f"]) > 1
+    bad_NLL = abs(NLL -  fit["f"]) > 1
+    if bad_NLL
         println("Oh no! Julia version is not within tolerance of MATLAB values")
         temp = NLL - fit["f"];
         println(temp)
@@ -55,7 +56,7 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     autodiff_hessian = ForwardDiff.hessian(x->compute_LL(data,x), params)
 
     # save new hessian
-    matwrite(save_path,Dict([("autodiff_hessian",autodiff_hessian)]))
+    matwrite(save_path,Dict("autodiff_hessian"=>autodiff_hessian,"julia_nll"=>NLL,"bad_nll"=>bad_NLL))
     println("saved data")
 
     return autodiff_hessian
