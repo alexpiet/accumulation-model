@@ -19,7 +19,8 @@ addParameter(p, 'save_suffix','');
 addParameter(p, 'use_param',true(1,8));
 addParameter(p, 'param_default',[]);
 addParameter(p, 'vectorize',true);
-% {'\lambda', '\sigma_a', '\sigma_s', '\sigma_i', '\phi',  '\tau', 'bias', 'lapse'}
+addParameter(p, 'param_names', {'\lambda', '\sigma_a', '\sigma_s', '\sigma_i', ...
+                                            '\phi',  '\tau', 'bias', 'lapse'});
 addParameter(p,'prior_mean', [nan 0 nan .5    nan nan nan nan]);%[nan 0 nan 0 nan .1059 nan nan]);
 addParameter(p,'prior_var',  [nan 5.39 nan 1.87 nan nan nan nan]);%[nan 5.39 nan 1.87 nan .01 nan nan]);
 addParameter(p,'use_priors', 1);
@@ -37,10 +38,11 @@ skipOptimization = par.skipOptimization;
 
 % Loop over the rats if desired
 if iscell(ratnames)
-    fit = cell(length(ratnames),1);
-    for rr = 1:length(ratnames)
+    nrats = length(ratnames);
+    for rr = nrats:-1:1
         ratname = ratnames{rr};
-        fit{rr} = fit_rat_analytical(ratname, varargin{:});
+        fprintf('Working on %s (%i of %i)...',ratname, nrats-rr+1, nrats)
+        fit(rr) = fit_rat_analytical(ratname, varargin{:});
     end
     return
 end
@@ -99,7 +101,7 @@ end
 % Determine which parameters to fit and whether to use priors
 use_param   = logical(par.use_param);
 p0          = p0(use_param);
-param_names = {'\lambda', '\sigma_a', '\sigma_s', '\sigma_i', '\phi',  '\tau', 'bias', 'lapse'};
+param_names = par.param_names;
 lower_bound = par.lower_bound(use_param);
 upper_bound = par.upper_bound(use_param);
 if par.use_priors
