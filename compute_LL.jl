@@ -55,7 +55,7 @@ end
 # Gaussian prior
 # on brodycomp: params(2)^2/(2*p.prior(2)^2) + params(4)^2/(2*p.prior(4)^2);
 # prior: 5.39, 1.87
-NLL += (params[2]^2)/(2*5.39^2) + (params[4]^2)/(2*1.87^2);
+NLL += (params[2]^2)/(2*5.39^2) + ((.5-params[4])^2)/(2*1.87^2);
 
 ### HACK ALERT for high gamma rats
 # prior from H065 fits
