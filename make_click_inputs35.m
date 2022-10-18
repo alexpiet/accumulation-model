@@ -46,7 +46,18 @@ for i = 1:numel(leftbups),
     net_input(here_L(i)) = net_input(here_L(i)) - clicks_L(i);
     tot_input(here_L(i)) = tot_input(here_L(i)) + clicks_L(i);
 end;
+
 for i = 1:numel(rightbups),
     net_input(here_R(i)) = net_input(here_R(i)) + clicks_R(i);
     tot_input(here_R(i)) = tot_input(here_R(i)) + clicks_R(i);
 end;
+%%
+Lin = zeros(length(t),1);
+Rin = zeros(length(t),1);
+
+Lin(here_L) = clicks_L;
+Rin(here_R) = clicks_R;
+net_input_ = Rin-Lin;
+tot_input_ = Rin+Lin;
+assert(isequal(net_input_,net_input))
+assert(isequal(tot_input_, tot_input))

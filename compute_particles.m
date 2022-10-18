@@ -19,10 +19,6 @@ dd = zeros(length(p.avals), numsteps);
 %slight timing offset on click times because make_click_inputs35 uses qfind, whereas compute_full_trial rounds click times and then bins. The following code is a little messy because it attempts to counteract qfind. I should really just not use make_click_inputs35, but the error is only off by 1 dt, so it doesn't really matter. 
 tvec = p.dt:p.dt:trial.T;
 [difflr, sumlr] = make_click_inputs35(tvec, trial.leftbups, trial.rightbups, cl, cr);
-%trial.leftbups = round(trial.leftbups/p.dt)*p.dt;
-%trial.rightbups = round(trial.rightbups/p.dt)*p.dt;
-%difflr = [difflr(2:end); difflr(end)];
-%sumlr = [sumlr(2:end); sumlr(end)];
 
 % Initalize with variance
 a(:,1) = sqrt(params(4)).*randn(n,1);
