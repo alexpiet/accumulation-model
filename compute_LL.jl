@@ -1,13 +1,53 @@
-function compute_LL(data, params)
+function compute_LL(ratname; res_dir="./", data_dir="./", overwrite=true)
 
+    # load rat data
+    println(res_dir)
+    println(ratname)
+    fitfn = joinpath(res_dir,"fit_analytical_"*ratname*".mat");
+    # load fit if it exists
+    if isfile(fitfn)
+        fit_data = matread(fitfn);
+        fit      = fit_data["fit"] 
+    else
+        error("couldn't find fit file "*fitfn)
+    end
+    println("fit loaded")
+    fit     = fit_data["fit"];
+    println("found field fit")
+    data    = fit_data["data"]
+    if haskey(data,"rawdata")
+        data = data["rawdata"]
+    end
+    println("found field data")
+    params  = fit["final"];
+    println("found field final")
+    prior_mean = fit["prior_mean"]
+    prior_var = fit["prior_var"]
+    println("found prior mean and variance")
+    nt = length(data["pokedR"])
+    println(string(nt)*" trials in this dataset")
+    # evaluate model LL just to make sure its correct
+    NLL, res = compute_LL(data, params, prior_mean = prior_mean, prior_var = prior_var);
+    println(NLL)
+    bad_NLL = abs(NLL -  fit["f"]) > 1
+    if bad_NLL
+        println("Oh no! Julia version is not within tolerance of MATLAB values")
+        temp = NLL - fit["f"];
+        println(temp)
+    else
+        println("Good. Julia NLL is within tolerance of MATLAB values")
+    end
+    return res
+end
+
+
+function compute_LL_res(data, params; prior_mean=[], prior_var=[])
 # Set up variables
 NLL = 0;
 if length(params) == 8
     bias  = params[7];
     lapse = params[8];
 elseif length(params) == 7
-#    bias  = params[6];
-#    lapse = params[7];
     bias = params[7];
     lapse = 0;
 else
@@ -16,57 +56,92 @@ else
 end
 
 # iterate over trials
-for i=1:length(data["hit"])
-    ma,va = compute_trial(data,i,params);
+nt = length(data["hit"])
+a_mu = Array{Float64, 1}(undef, nt)
+a_var = Array{Float64, 1}(undef, nt)
+nll = Array{Float64, 1}(undef, nt)
+pr = Array{Float64, 1}(undef, nt)
 
+for tt=1:nt
+    ma, va = compute_trial(data,tt,params);
     # compute pr, pl with bias
-    pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
-    pl = 1-pr;
+    this_pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
+    this_pl = 1-this_pr;
 
     # compute pr, pl with lapse
-    PR = (1-lapse)*pr + lapse*0.5;
-    PL = (1-lapse)*pl + lapse*0.5;
-
-
-    # checking for log() stability
-#    if PR == 0
-#        PR = eps();
-#    end
-#    if PL == 0
-#        PL = eps();
-#    end
-
+    PR = (1-lapse)*this_pr + lapse*0.5;
+    PL = (1-lapse)*this_pl + lapse*0.5;
+    
     # compute NLL for this trial
-    if data["pokedR"][i] 
+    if data["pokedR"][tt] 
+        nll[tt] = -log(PR);
+    else
+        nll[tt] = -log(PL);
+    end
+    a_mu[tt] = ma
+    a_var[tt] = va
+    pr[tt] = PR
+    
+    NLL += nll[tt]
+end
+
+# add priors
+prior_cost = 0
+for pp = 1:length(prior_mean)
+    if !isnan(prior_mean[pp])
+        prior_cost += (params[pp]-prior_mean[pp])^2 / (2*prior_var[pp]^2)
+    end
+end
+NLL += prior_cost
+
+res =  Dict("a_mu"=>a_mu, "a_var"=>a_var, "pr"=>pr, "nll"=>nll, "NLL"=>NLL)
+return NLL, res
+end
+
+
+function compute_LL(data, params; prior_mean=[], prior_var=[])
+# Set up variables
+NLL = 0;
+if length(params) == 8
+    bias  = params[7];
+    lapse = params[8];
+elseif length(params) == 7
+    bias = params[7];
+    lapse = 0;
+else
+    bias  = params[5];
+    lapse = params[6];
+end
+
+# iterate over trials
+nt = length(data["hit"])
+for tt=1:nt
+    ma, va = compute_trial(data,tt,params);
+    # compute pr, pl with bias
+    this_pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
+    this_pl = 1-this_pr;
+
+    # compute pr, pl with lapse
+    PR = (1-lapse)*this_pr + lapse*0.5;
+    PL = (1-lapse)*this_pl + lapse*0.5;
+    
+    # compute NLL for this trial
+    if data["pokedR"][tt] 
         nll = -log(PR);
     else
         nll = -log(PL);
     end
-    
-    # add to total over all trials
-    NLL += nll;
+    NLL += nll
 end
 
-# exponential prior
-#on brodycomp: sum(p.prior.*params)
-# prior: 0.31, 0.94
-#NLL += params[2]*0.31 + params[4]*0.94;
-
-# Gaussian prior
-# on brodycomp: params(2)^2/(2*p.prior(2)^2) + params(4)^2/(2*p.prior(4)^2);
-# prior: 5.39, 1.87
-NLL += (params[2]^2)/(2*5.39^2) + (params[4]^2)/(2*1.87^2);
-
-### HACK ALERT for high gamma rats
-# prior from H065 fits
-#prior     = [0, 5.39,   1.49, 1.87,       0.14,      0.0040,      0,      0];
-#mean_prior= [0, 0,      7.91, 0,          0.064,      0.019,      0,      0];
-# prior from H067 fits
-#prior     = [0, 5.39,   0.49, 1.87,       0.065,      0.026,      0,      0];
-#mean_prior= [0, 0,      2.40, 0,          0.22,       0.095,      0,      0];
-
-#NLL += (params[2]^2)/(2*5.39^2) + (params[4]^2)/(2*1.87^2) + (params[5] - mean_prior[5])^2/(2*prior[5]^2) + (params[6]-mean_prior[6])^2/(2*prior[6]^2) + (params[3]-mean_prior[3])^2/(2*prior[3]^2);
-
+# add priors
+prior_cost = 0
+for pp = 1:length(prior_mean)
+    if !isnan(prior_mean[pp])
+        prior_cost += (params[pp]-prior_mean[pp])^2 / (2*prior_var[pp]^2)
+    end
+end
+NLL += prior_cost
 return NLL
 end
 

@@ -38,10 +38,12 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     println("found field data")
     params  = fit["final"];
     println("found field final")
+    prior_mean = fit["prior_mean"]
+    prior_var = fit["prior_var"]
     nt = length(data["pokedR"])
     println(string(nt)*" trials in this dataset")
     # evaluate model LL just to make sure its correct
-    NLL = compute_LL(data, params);
+    NLL, res  = compute_LL_res(data, params, prior_mean=prior_mean, prior_var=prior_var);
     println(NLL)
     bad_NLL = abs(NLL -  fit["f"]) > 1
     if bad_NLL
@@ -54,16 +56,14 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
 
     # compute hessian using autodiff
     autodiff_hessian = ForwardDiff.hessian(x->compute_LL(data,x), params)
-
+    res["autodiff_hessian"] = autodiff_hessian
     # save new hessian
-    matwrite(save_path,Dict("autodiff_hessian"=>autodiff_hessian,"julia_nll"=>NLL,"bad_nll"=>bad_NLL))
+    matwrite(save_path,res)
     println("saved data")
 
     return autodiff_hessian
 
 end
-
-
 
 
 

@@ -27,7 +27,8 @@ addParameter(p,'use_priors', 1);
 addParameter(p, 'lower_bound', [ -40, 0,   0,    0,  0, 0.01, -20, 0]);
 addParameter(p, 'upper_bound', [ +40, 200, 5000, 30, 1.2, 5, +20, 1]);
 addParameter(p, 'overwrite',0)
-addParameter(p, 'TolFun',1e-6)
+addParameter(p, 'TolFun',1e-13)
+addParameter(p, 'TolX',1e-13)
 addParameter(p, 'skipOptimization',false)
 parse(p,varargin{:})
 par         = p.Results;
@@ -49,9 +50,9 @@ end
 
 % Get the data to fit
 if isstruct(ratnames)
-    rawdata = ratnames;
-    if isfield(rawdata,'ratname')
-        ratname = rawdata(1).ratname;
+    data = ratnames;
+    if isfield(data,'ratname')
+        ratname = data(1).ratname;
     else
         ratname = ['unknown_' num2str(now)];
     end
@@ -118,7 +119,12 @@ if ~isempty(par.param_default)
 end
 
 % Setup the data and the function to minimize
-rawdata     = data.rawdata;
+if isfield(data,'rawdata')
+    rawdata     = data.rawdata;
+else
+    rawdata     = data;
+end
+
 pokedR      = [rawdata.pokedR]';
 stim_dur    = [rawdata.T];
 if par.vectorize
@@ -144,8 +150,9 @@ if ~skipOptimization
     [xbf, f, exitflag, output, ~, grad, hessian] = ...
         fmincon(nllfun, p0, ...
         [], [], [], [], lower_bound,  upper_bound, [], ...
-        optimset('Display', 'iter-detailed','TolFun',par.TolFun,...
-        'MaxFunEvals',1e4));
+        optimset('Display', 'iter-detailed', 'TolX', par.TolX, ...
+        'TolFun',par.TolFun,...
+        'MaxFunEvals',1e5));
     bf_full(use_param) = xbf;
     tfit = toc;
 else
