@@ -1,4 +1,4 @@
-function [NLL_total, ma, va,  p_chooseR] = compute_LL(data, params,p)
+function [NLL_total, ma, va,  p_chooseR, NLL] = compute_LL(data, params,p)
 
 
 NLL   = zeros(1,length(data));
