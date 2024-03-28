@@ -119,7 +119,8 @@ end
 
 % Setup the data and the function to minimize
 rawdata     = data.rawdata;
-pokedR      = [rawdata.pokedR]';
+avgdata     = data.avgdata;
+pokedR      = [avgdata.pokedR]';
 stim_dur    = [rawdata.T];
 if par.vectorize
     [buptimes,nantimes,streamIdx] = vectorize_clicks({rawdata.leftbups}, {rawdata.rightbups});
