@@ -82,7 +82,7 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     # compute hessian using autodiff
     autodiff_hessian = ForwardDiff.hessian(x->compute_LL(data, x; prior_mean = prior_mean, prior_var=prior_var), params)
     
-    res = Dict("NLL"=>NLL, "autodiff_hessian"=>autodiff_hessian)
+    res = Dict("NLL"=>NLL, "autodiff_hessian"=>autodiff_hessian, "bad_NLL"=>bad_NLL)
 
     return res
 

@@ -31,12 +31,12 @@ for tt=1:nt
     PL = (1-lapse)*this_pl + lapse*0.5;
     
     # compute NLL for this trial
-    if data["pokedR"][tt] 
+    if data["pokedR"][tt]
         nll = -log(PR);
     else
         nll = -log(PL);
     end
-    NLL += nll
+    NLL += nll;
 end
 
 # add prior cost
@@ -272,13 +272,7 @@ end
 function make_adapted_clicks(leftbups, rightbups, phi, tau_phi, psi, tau_psi)
     Lsame = ones(typeof(phi),size(leftbups));
     Rsame = ones(typeof(phi),size(rightbups));
-    """
-    # magnitude of stereo clicks set to zero
-    if ~isempty(leftbups) && ~isempty(rightbups) && abs(leftbups[1]-rightbups[1]) < eps()
-        Lsame[1] = 0;
-        Rsame[1] = 0;
-    end;
-    """
+
     # if there's appreciable same-side adaptation
     if abs(phi - 1) > eps() 
         # inter-click-intervals
@@ -432,6 +426,8 @@ function make_adapted_cat_clicks(leftbups, rightbups, phi, tau_phi)
         adapted = ones(typeof(phi), 1, size(allbups,2));
         for i = 2:size(allbups,2)
             if ici[i-1] <= 0
+                adapted[i-1] = 0;
+                adapted[i] =0;
                 adapted[i-1] = 0;
                 adapted[i] =0;
             else
