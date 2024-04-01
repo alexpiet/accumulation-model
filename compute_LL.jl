@@ -1,4 +1,72 @@
+"""
+    compute_LL(data, params; prior_mean=[], prior_var=[])
+
+    Compute the negative log likelihood of the model given the data and parameters
+
+"""
+function compute_LL(data, params; prior_mean=[], prior_var=[])
+# Set up variables
+NLL = 0;
+if length(params) == 8
+    bias  = params[7];
+    lapse = params[8];
+elseif length(params) == 7
+    bias = params[7];
+    lapse = 0;
+else
+    bias  = params[5];
+    lapse = params[6];
+end
+
+# iterate over trials
+nt = length(data["pokedR"])
+for tt=1:nt
+    ma, va = compute_trial(data,tt,params);
+    # compute pr, pl with bias
+    this_pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
+    this_pl = 1-this_pr;
+
+    # compute pr, pl with lapse
+    PR = (1-lapse)*this_pr + lapse*0.5;
+    PL = (1-lapse)*this_pl + lapse*0.5;
+    
+    # compute NLL for this trial
+    if data["pokedR"][tt]
+        nll = -log(PR);
+    else
+        nll = -log(PL);
+    end
+    NLL += nll;
+end
+
+# add prior cost
+if !isempty(prior_mean)
+    NLL += compute_prior_cost(params, prior_mean, prior_var)
+end
+
+# Return NLL
+return NLL
+end
+
+function compute_prior_cost(params, prior_mean, prior_var)
+    prior_cost = 0
+    for pp = 1:length(prior_mean)
+        if !isnan(prior_mean[pp])
+            prior_cost += (params[pp]-prior_mean[pp])^2 / (2*prior_var[pp]^2)
+        end
+    end
+    return prior_cost
+end
+
+
+"""
+    compute_LL(ratname; res_dir="./", data_dir="./", overwrite=true)
+
+    Compute the negative log likelihood of the model given the data and parameters
+
+"""
 function compute_LL(ratname; res_dir="./", data_dir="./", overwrite=true)
+
 
     # load rat data
     println(res_dir)
@@ -41,6 +109,11 @@ function compute_LL(ratname; res_dir="./", data_dir="./", overwrite=true)
 end
 
 
+"""
+    compute_LL_res(data, params; prior_mean=[], prior_var=[])
+
+    Compute the negative log likelihood of the model given the data and parameters
+"""
 function compute_LL_res(data, params; prior_mean=[], prior_var=[])
 # Set up variables
 NLL = 0;
@@ -56,7 +129,7 @@ else
 end
 
 # iterate over trials
-nt = length(data["hit"])
+nt = length(data["pokedR"])
 a_mu = Array{Float64, 1}(undef, nt)
 a_var = Array{Float64, 1}(undef, nt)
 nll = Array{Float64, 1}(undef, nt)
@@ -71,6 +144,9 @@ for tt=1:nt
     # compute pr, pl with lapse
     PR = (1-lapse)*this_pr + lapse*0.5;
     PL = (1-lapse)*this_pl + lapse*0.5;
+
+    PR = min(1-eps(), max(eps(), PR))
+    PL = min(1-eps(), max(eps(), PL))
     
     # compute NLL for this trial
     if data["pokedR"][tt] 
@@ -99,54 +175,14 @@ return NLL, res
 end
 
 
-function compute_LL(data, params; prior_mean=[], prior_var=[])
-# Set up variables
-NLL = 0;
-if length(params) == 8
-    bias  = params[7];
-    lapse = params[8];
-elseif length(params) == 7
-    bias = params[7];
-    lapse = 0;
-else
-    bias  = params[5];
-    lapse = params[6];
-end
-
-# iterate over trials
-nt = length(data["hit"])
-for tt=1:nt
-    ma, va = compute_trial(data,tt,params);
-    # compute pr, pl with bias
-    this_pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
-    this_pl = 1-this_pr;
-
-    # compute pr, pl with lapse
-    PR = (1-lapse)*this_pr + lapse*0.5;
-    PL = (1-lapse)*this_pl + lapse*0.5;
-    
-    # compute NLL for this trial
-    if data["pokedR"][tt] 
-        nll = -log(PR);
-    else
-        nll = -log(PL);
-    end
-    NLL += nll
-end
-
-# add priors
-prior_cost = 0
-for pp = 1:length(prior_mean)
-    if !isnan(prior_mean[pp])
-        prior_cost += (params[pp]-prior_mean[pp])^2 / (2*prior_var[pp]^2)
-    end
-end
-NLL += prior_cost
-return NLL
-end
 
 
 
+"""
+    compute_trial(data, i, params)
+
+    Compute the mean and variance of the distribution of the accumulation process at the time of choice for a given trial
+"""
 function compute_trial(data, i, params);
     
     # run clicks through the adaptation process  
@@ -159,13 +195,33 @@ function compute_trial(data, i, params);
         cl, cr = make_adapted_cat_clicks(data["leftbups"][i], data["rightbups"][i], params[3],params[4]);
     end
 
-    clicks = [-cl cr];
-    times = [data["leftbups"][i] data["rightbups"][i]];
+    if !isempty(cl) & !isempty(cr)    
+        clicks = [-cl cr];
+        times = [data["leftbups"][i] data["rightbups"][i]];
+    elseif isempty(cl) & !isempty(cr)
+        clicks = cr;
+        times = data["rightbups"][i];
+    elseif !isempty(cl) & isempty(cr)
+        clicks = -cl;
+        times = data["leftbups"][i];
+    else
+        clicks = [];
+        times = [];
+    end
 
     # compute mean of distribution
     mean_a = 0;
     for j=1:length(clicks)
-        mean_a += clicks[j]*exp(params[1]*(data["T"][i]-times[j]));
+        try
+            mean_a += clicks[j]*exp(params[1]*(data["T"][i]-times[j]));
+        catch
+            println("Error in compute_trial")
+            println("clicks:"*string(clicks))
+            println("times:"*string(times))
+            println("T:"*string(data["T"][i]))
+            println("lambda:"*string(params[1]))
+            println("time j:"*string(times[j]))
+        end
     end
     # compute variance of distribution
     # three sources: initial (params[4]), accumulation (params[2]), and per-click (params[3])
@@ -206,17 +262,17 @@ function compute_trial(data, i, params);
 end
 
 
-# Adaptation function with separate within and across stream adaptation
+
+"""
+    make_adapted_clicks(leftbups, rightbups, phi, tau_phi, psi, tau_psi)
+
+    Adaptation function with separate within and across stream adaptation
+
+"""
 function make_adapted_clicks(leftbups, rightbups, phi, tau_phi, psi, tau_psi)
     Lsame = ones(typeof(phi),size(leftbups));
     Rsame = ones(typeof(phi),size(rightbups));
-    """
-    # magnitude of stereo clicks set to zero
-    if ~isempty(leftbups) && ~isempty(rightbups) && abs(leftbups[1]-rightbups[1]) < eps()
-        Lsame[1] = 0;
-        Rsame[1] = 0;
-    end;
-    """
+
     # if there's appreciable same-side adaptation
     if abs(phi - 1) > eps() 
         # inter-click-intervals
@@ -338,16 +394,31 @@ end
 #    return L, R
 #end
 
-# Adaptation function with both within stream and across stream adaptation
+
+"""
+    make_adapted_cat_clicks(leftbups, rightbups, phi, tau_phi)
+
+    Adaptation function with both within stream and across stream adaptation
+    Returns adapted click rates for left and right streams
+"""
 function make_adapted_cat_clicks(leftbups, rightbups, phi, tau_phi)
     
     if abs(phi - 1) > eps()
         lefts  = [leftbups;  -ones(1,length(leftbups))];
         rights = [rightbups; +ones(1,length(rightbups))];
-        allbups = sortslices([lefts rights]',dims=1)'; # one bup in each col, second row has side bup was on
+        if isempty(lefts) & !isempty(rights)
+            allbups = rights;
+        elseif isempty(rights) & !isempty(lefts)
+            allbups = lefts;
+        elseif isempty(lefts) & isempty(rights)
+            allbups = [];
+        else
+            allbups = sortslices([lefts rights]',dims=1)'; # one bup in each col, second row has side bup was on
+        end
 
         if length(allbups) <= 1
             ici = [];
+            adapted = [];
         else
             ici = (allbups[1,2:end]  - allbups[1,1:end-1])';
         end     
@@ -357,16 +428,36 @@ function make_adapted_cat_clicks(leftbups, rightbups, phi, tau_phi)
             if ici[i-1] <= 0
                 adapted[i-1] = 0;
                 adapted[i] =0;
+                adapted[i-1] = 0;
+                adapted[i] =0;
             else
-                    #last = tau_phi * log(1 - adapted[i-1]*phi);
-                    #adapted[i] = 1 - exp((-ici[i-1] + last)/tau_phi);
-                    adapted[i] = 1+ exp(-ici[i-1]/tau_phi)*(adapted[i-1]*phi -1);
+                #last = tau_phi * log(1 - adapted[i-1]*phi);
+                #adapted[i] = 1 - exp((-ici[i-1] + last)/tau_phi);
+                adapted[i] = 1+ exp(-ici[i-1]/tau_phi)*(adapted[i-1]*phi -1);
             end
         end
     
     	adapted = real(adapted);
-    	L = adapted[allbups[2,:] .==-1]';
-    	R = adapted[allbups[2,:] .==+1]';
+        # Put this in a try catch Loop
+
+        
+        if isempty(allbups)
+            L = [];
+            R = [];
+        else
+            if any(allbups[2,:] .==-1) 
+                L = adapted[allbups[2,:] .==-1]';
+            else
+                L = [];
+            end
+            if any(allbups[2,:] .==+1)
+                R = adapted[allbups[2,:] .==+1]';
+            else
+                R = [];
+            end
+        end
+    
+
     else
     	# phi was equal to 1, there's no adaptation going on.
     	L = leftbups;

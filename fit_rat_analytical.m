@@ -119,13 +119,9 @@ if ~isempty(par.param_default)
 end
 
 % Setup the data and the function to minimize
-if isfield(data,'rawdata')
-    rawdata     = data.rawdata;
-else
-    rawdata     = data;
-end
-
-pokedR      = [rawdata.pokedR]';
+rawdata     = data.rawdata;
+avgdata     = data.avgdata;
+pokedR      = [avgdata.pokedR]';
 stim_dur    = [rawdata.T];
 if par.vectorize
     [buptimes,nantimes,streamIdx] = vectorize_clicks({rawdata.leftbups}, {rawdata.rightbups});
