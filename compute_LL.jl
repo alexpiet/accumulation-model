@@ -16,7 +16,7 @@ else
 end
 
 # iterate over trials
-for i=1:length(data["hit"])
+for i=1:length(data["pokedR"])
     ma,va = compute_trial(data,i,params);
 
     # compute pr, pl with bias
@@ -37,7 +37,7 @@ for i=1:length(data["hit"])
 #    end
 
     # compute NLL for this trial
-    if data["pokedR"][i] 
+    if data["pokedR"][i]==1 
         nll = -log(PR);
     else
         nll = -log(PL);

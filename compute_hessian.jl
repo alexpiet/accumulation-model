@@ -32,14 +32,16 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     fit     = fit_data["fit"];
     println("found field fit")
     data    = fit_data["data"]
+    pokedR = data["avgdata"]["pokedR"]
     if haskey(data,"rawdata")
         data = data["rawdata"]
     end
+    data["pokedR"]=pokedR
     println("found field data")
     params  = fit["final"];
     println("found field final")
-    nt = length(data["pokedR"])
-    println(string(nt)*" trials in this dataset")
+    nt = length(pokedR)
+    println(string(nt)*" trials in this dataset. Computing NLL")
     # evaluate model LL just to make sure its correct
     NLL = compute_LL(data, params);
     println(NLL)

@@ -33,7 +33,7 @@ if D.plot_bias_line
     hold on;
     %plot([0 0], [D.T(1) D.T(end)],'m--','linewidth',2)
     plot([D.T(1) D.T(end)],[0 0]+D.bias_param,'--',...
-        'color',[1 1 1].*.0,'linewidth',1)
+        'color',[1 1 1].*.0)
 end
 
 if ~isfield(D, 'plot_mean_line'); D.plot_mean_line =0; end;
