@@ -1,5 +1,12 @@
+"""
+    compute_hessian(ratname; res_dir="./", overwrite=true)
+
+    Compute the hessian of the likelihood function relation for the choice model predicting right 
+    and left pokes from clicks times and model parameters at the maximum likelihood estimate for a given rat
+
+"""
 function compute_hessian(ratname; res_dir="./", overwrite=true)
-    
+
     # Loop over rats if provided as group
     if ratname isa Array
         nrats   = length(ratname)
@@ -15,12 +22,14 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     println(ratname)
     fitfn = joinpath(res_dir,"fit_analytical_"*ratname*".mat");
     save_path = joinpath(res_dir,"julia_hessian_"*ratname*".mat")
+
     # load hess if it exists
     if isfile(save_path) & !overwrite
         println("already saved hessian for "*ratname) 
         hess = matread(save_path)
         return hess
     end
+
     # load fit if it exists
     if isfile(fitfn)
         fit_data = matread(fitfn);
@@ -29,6 +38,7 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
         error("couldn't find fit file "*fitfn)
     end
     println("fit loaded")
+
     fit     = fit_data["fit"];
     println("found field fit")
     data    = fit_data["data"]
@@ -36,15 +46,26 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     if haskey(data,"rawdata")
         data = data["rawdata"]
     end
-    data["pokedR"]=pokedR
+    data["pokedR"]=(pokedR==1)
     println("found field data")
     params  = fit["final"];
     println("found field final")
+
+    # Determine how many trials there are
     nt = length(pokedR)
     println(string(nt)*" trials in this dataset. Computing NLL")
+
+    # Figure out whether to set priors on model parameters
+    prior_mean = fit["prior_mean"]
+    prior_var = fit["prior_var"]
+    
+    println(string(nt)*" trials in this dataset")
+
     # evaluate model LL just to make sure its correct
-    NLL = compute_LL(data, params);
+    NLL, res  = compute_LL_res(data, params, prior_mean=prior_mean, prior_var=prior_var);
     println(NLL)
+
+    # check if NLL is within tolerance of MATLAB values
     bad_NLL = abs(NLL -  fit["f"]) > 1
     if bad_NLL
         println("Oh no! Julia version is not within tolerance of MATLAB values")
@@ -56,16 +77,15 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
 
     # compute hessian using autodiff
     autodiff_hessian = ForwardDiff.hessian(x->compute_LL(data,x), params)
+    res["autodiff_hessian"] = autodiff_hessian
 
     # save new hessian
-    matwrite(save_path,Dict("autodiff_hessian"=>autodiff_hessian,"julia_nll"=>NLL,"bad_nll"=>bad_NLL))
+    matwrite(save_path,res)
     println("saved data")
 
     return autodiff_hessian
 
 end
-
-
 
 
 

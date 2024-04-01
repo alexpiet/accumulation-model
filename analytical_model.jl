@@ -10,7 +10,7 @@ using ForwardDiff
 using SpecialFunctions
 using Glob
 
-export compute_hessian
+export compute_LL, compute_hessian
 
 include("compute_LL.jl")
 include("compute_hessian.jl")
