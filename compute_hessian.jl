@@ -17,9 +17,10 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
         return hess
     end
 
+    println("\nComputing hessian for "*ratname)
+    println("----------------------------------")
+    
     # load rat data
-    println(res_dir)
-    println(ratname)
     fitfn = joinpath(res_dir,"fit_analytical_"*ratname*".mat");
     save_path = joinpath(res_dir,"julia_hessian_"*ratname*".mat")
 
@@ -37,58 +38,75 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     else
         error("couldn't find fit file "*fitfn)
     end
-    println("fit loaded")
-
-    println("fit has fields:"*string(keys(fit)))
-
+    println("Analytical choice model fit loaded")
     fit     = fit_data["fit"];
-    println("found field fit")
+    println("Contains field 'fit'")
     data    = fit_data["data"]
     pokedR = data["avgdata"]["pokedR"]
     if haskey(data,"rawdata")
         data = data["rawdata"]
     end
     data["pokedR"]=(pokedR.==1)
-    println("found field data")
-    params  = fit["final"];
-    println("found field final")
-    
-    # Determine how many trials there are
     nt = length(pokedR)
-    println(string(nt)*" trials in this dataset. Computing NLL with params")
+
+    println("Contains field 'data' with "*string(nt)*" trials")
+    params  = fit["final"];
+    println("Contains field 'final' with parameters and priors")
 
     # Figure out whether to set priors on model parameters
     prior_mean = fit["prior_mean"]
     prior_var = fit["prior_var"]
+
+    # Print the parameters and priors that will be used
     for i = 1:length(params)
         # print the parameters to 3 decimals
         println(fit["param_names"][i]*": "*string(round(params[i],digits=3))*" (prior mean: "*string(round(prior_mean[i],digits=3))*")")
     end
-    # evaluate model LL just to make sure its correct
-    NLL, res  = compute_LL_res(data, params);
-    println(NLL)
 
-    # check if NLL is within tolerance of MATLAB values
+    # Compute model likelihood for these parameters and priors
+    NLL  = compute_LL(data, params; prior_var=prior_var, prior_mean=prior_mean);
+
+    # Report the NLL 
+    println("MATLAB NLL is: "*string(round(fit["f"],digits=3))*" Julia NLL is: "*string(round(NLL,digits=3)))
+
+    # Check if NLL is within tolerance of MATLAB values
     bad_NLL = abs(NLL -  fit["f"]) > 1
     if bad_NLL
         println("Oh no! Julia version is not within tolerance of MATLAB values")
         temp = NLL - fit["f"];
         println(temp)
     else
-        println("Good. Julia NLL is within tolerance of MATLAB values")
+        println("Good. Julia NLL is within tolerance of MATLAB values. (Julia - MATLAB = "*string(NLL - fit["f"])*")")
     end
 
     # compute hessian using autodiff
-    autodiff_hessian = ForwardDiff.hessian(x->compute_LL(data,x), params)
-    res["autodiff_hessian"] = autodiff_hessian
+    autodiff_hessian = ForwardDiff.hessian(x->compute_LL(data, x; prior_mean = prior_mean, prior_var=prior_var), params)
+    
+    res = Dict("NLL"=>NLL, "autodiff_hessian"=>autodiff_hessian)
 
-    # save new hessian
-    matwrite(save_path,res)
-    println("saved data")
-
-    return autodiff_hessian
+    return res
 
 end
 
+
+function save_hessian(ratname; res_dir="./", overwrite=true)
+
+    # Loop over rats if provided as group
+    if ratname isa Array
+        nrats   = length(ratname)
+        res    = Array{Any, 1}(undef,nrats)
+        for rr  = 1:nrats
+            res[rr] = save_hessian(ratname[rr], res_dir=res_dir, overwrite=overwrite)
+        end
+        return res
+    end
+
+    res = compute_hessian(ratname, res_dir=res_dir, overwrite=overwrite)
+    save_path = joinpath(res_dir,"julia_hessian_"*ratname*".mat")
+    matwrite(save_path, res)
+    println("saved data in "*save_path)
+
+    return res
+end
 
 

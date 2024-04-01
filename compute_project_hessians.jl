@@ -12,4 +12,4 @@ ratlistfile = joinpath(data_dir, "included_rats.mat")
 rats        = matread(ratlistfile)
 rats        = rats["included_rats"]
 println(rats)
-hess = analytical_model.compute_hessian(rats,res_dir = res_dir, overwrite=overwrite)
+hess = analytical_model.save_hessian(rats,res_dir = res_dir, overwrite=overwrite)

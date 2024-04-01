@@ -1,4 +1,65 @@
 """
+    compute_LL(data, params; prior_mean=[], prior_var=[])
+
+    Compute the negative log likelihood of the model given the data and parameters
+
+"""
+function compute_LL(data, params; prior_mean=[], prior_var=[])
+# Set up variables
+NLL = 0;
+if length(params) == 8
+    bias  = params[7];
+    lapse = params[8];
+elseif length(params) == 7
+    bias = params[7];
+    lapse = 0;
+else
+    bias  = params[5];
+    lapse = params[6];
+end
+
+# iterate over trials
+nt = length(data["pokedR"])
+for tt=1:nt
+    ma, va = compute_trial(data,tt,params);
+    # compute pr, pl with bias
+    this_pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
+    this_pl = 1-this_pr;
+
+    # compute pr, pl with lapse
+    PR = (1-lapse)*this_pr + lapse*0.5;
+    PL = (1-lapse)*this_pl + lapse*0.5;
+    
+    # compute NLL for this trial
+    if data["pokedR"][tt] 
+        nll = -log(PR);
+    else
+        nll = -log(PL);
+    end
+    NLL += nll
+end
+
+# add prior cost
+if !isempty(prior_mean)
+    NLL += compute_prior_cost(params, prior_mean, prior_var)
+end
+
+# Return NLL
+return NLL
+end
+
+function compute_prior_cost(params, prior_mean, prior_var)
+    prior_cost = 0
+    for pp = 1:length(prior_mean)
+        if !isnan(prior_mean[pp])
+            prior_cost += (params[pp]-prior_mean[pp])^2 / (2*prior_var[pp]^2)
+        end
+    end
+    return prior_cost
+end
+
+
+"""
     compute_LL(ratname; res_dir="./", data_dir="./", overwrite=true)
 
     Compute the negative log likelihood of the model given the data and parameters
@@ -114,57 +175,6 @@ return NLL, res
 end
 
 
-"""
-    compute_LL(data, params; prior_mean=[], prior_var=[])
-
-    Compute the negative log likelihood of the model given the data and parameters
-
-"""
-function compute_LL(data, params; prior_mean=[], prior_var=[])
-# Set up variables
-NLL = 0;
-if length(params) == 8
-    bias  = params[7];
-    lapse = params[8];
-elseif length(params) == 7
-    bias = params[7];
-    lapse = 0;
-else
-    bias  = params[5];
-    lapse = params[6];
-end
-
-# iterate over trials
-nt = length(data["pokedR"])
-for tt=1:nt
-    ma, va = compute_trial(data,tt,params);
-    # compute pr, pl with bias
-    this_pr = 0.5*(1+erf( -(bias-ma)/sqrt(2*va)));
-    this_pl = 1-this_pr;
-
-    # compute pr, pl with lapse
-    PR = (1-lapse)*this_pr + lapse*0.5;
-    PL = (1-lapse)*this_pl + lapse*0.5;
-    
-    # compute NLL for this trial
-    if data["pokedR"][tt] 
-        nll = -log(PR);
-    else
-        nll = -log(PL);
-    end
-    NLL += nll
-end
-
-# add priors
-prior_cost = 0
-for pp = 1:length(prior_mean)
-    if !isnan(prior_mean[pp])
-        prior_cost += (params[pp]-prior_mean[pp])^2 / (2*prior_var[pp]^2)
-    end
-end
-NLL += prior_cost
-return NLL
-end
 
 
 
@@ -189,11 +199,11 @@ function compute_trial(data, i, params);
         clicks = [-cl cr];
         times = [data["leftbups"][i] data["rightbups"][i]];
     elseif isempty(cl) & !isempty(cr)
-        clicks = [cr];
-        times = [data["rightbups"][i]];
+        clicks = cr;
+        times = data["rightbups"][i];
     elseif !isempty(cl) & isempty(cr)
-        clicks = [-cl];
-        times = [data["leftbups"][i]];
+        clicks = -cl;
+        times = data["leftbups"][i];
     else
         clicks = [];
         times = [];
@@ -202,7 +212,16 @@ function compute_trial(data, i, params);
     # compute mean of distribution
     mean_a = 0;
     for j=1:length(clicks)
-        mean_a += clicks[j]*exp(params[1]*(data["T"][i]-times[j]));
+        try
+            mean_a += clicks[j]*exp(params[1]*(data["T"][i]-times[j]));
+        catch
+            println("Error in compute_trial")
+            println("clicks:"*string(clicks))
+            println("times:"*string(times))
+            println("T:"*string(data["T"][i]))
+            println("lambda:"*string(params[1]))
+            println("time j:"*string(times[j]))
+        end
     end
     # compute variance of distribution
     # three sources: initial (params[4]), accumulation (params[2]), and per-click (params[3])
