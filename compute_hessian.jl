@@ -48,7 +48,7 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     if haskey(data,"rawdata")
         data = data["rawdata"]
     end
-    data["pokedR"]=(pokedR==1)
+    data["pokedR"]=(pokedR.==1)
     println("found field data")
     params  = fit["final"];
     println("found field final")

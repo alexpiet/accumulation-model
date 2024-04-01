@@ -83,6 +83,9 @@ for tt=1:nt
     # compute pr, pl with lapse
     PR = (1-lapse)*this_pr + lapse*0.5;
     PL = (1-lapse)*this_pl + lapse*0.5;
+
+    PR = min(1-eps(), max(eps(), PR))
+    PL = min(1-eps(), max(eps(), PL))
     
     # compute NLL for this trial
     if data["pokedR"][tt] 
@@ -182,8 +185,19 @@ function compute_trial(data, i, params);
         cl, cr = make_adapted_cat_clicks(data["leftbups"][i], data["rightbups"][i], params[3],params[4]);
     end
 
-    clicks = [-cl cr];
-    times = [data["leftbups"][i] data["rightbups"][i]];
+    if !isempty(cl) & !isempty(cr)    
+        clicks = [-cl cr];
+        times = [data["leftbups"][i] data["rightbups"][i]];
+    elseif isempty(cl) & !isempty(cr)
+        clicks = [cr];
+        times = [data["rightbups"][i]];
+    elseif !isempty(cl) & isempty(cr)
+        clicks = [-cl];
+        times = [data["leftbups"][i]];
+    else
+        clicks = [];
+        times = [];
+    end
 
     # compute mean of distribution
     mean_a = 0;
@@ -379,10 +393,19 @@ function make_adapted_cat_clicks(leftbups, rightbups, phi, tau_phi)
     if abs(phi - 1) > eps()
         lefts  = [leftbups;  -ones(1,length(leftbups))];
         rights = [rightbups; +ones(1,length(rightbups))];
-        allbups = sortslices([lefts rights]',dims=1)'; # one bup in each col, second row has side bup was on
+        if isempty(lefts) & !isempty(rights)
+            allbups = rights;
+        elseif isempty(rights) & !isempty(lefts)
+            allbups = lefts;
+        elseif isempty(lefts) & isempty(rights)
+            allbups = [];
+        else
+            allbups = sortslices([lefts rights]',dims=1)'; # one bup in each col, second row has side bup was on
+        end
 
         if length(allbups) <= 1
             ici = [];
+            adapted = [];
         else
             ici = (allbups[1,2:end]  - allbups[1,1:end-1])';
         end     
@@ -393,15 +416,33 @@ function make_adapted_cat_clicks(leftbups, rightbups, phi, tau_phi)
                 adapted[i-1] = 0;
                 adapted[i] =0;
             else
-                    #last = tau_phi * log(1 - adapted[i-1]*phi);
-                    #adapted[i] = 1 - exp((-ici[i-1] + last)/tau_phi);
-                    adapted[i] = 1+ exp(-ici[i-1]/tau_phi)*(adapted[i-1]*phi -1);
+                #last = tau_phi * log(1 - adapted[i-1]*phi);
+                #adapted[i] = 1 - exp((-ici[i-1] + last)/tau_phi);
+                adapted[i] = 1+ exp(-ici[i-1]/tau_phi)*(adapted[i-1]*phi -1);
             end
         end
     
     	adapted = real(adapted);
-    	L = adapted[allbups[2,:] .==-1]';
-    	R = adapted[allbups[2,:] .==+1]';
+        # Put this in a try catch Loop
+
+        
+        if isempty(allbups)
+            L = [];
+            R = [];
+        else
+            if any(allbups[2,:] .==-1) 
+                L = adapted[allbups[2,:] .==-1]';
+            else
+                L = [];
+            end
+            if any(allbups[2,:] .==+1)
+                R = adapted[allbups[2,:] .==+1]';
+            else
+                R = [];
+            end
+        end
+    
+
     else
     	# phi was equal to 1, there's no adaptation going on.
     	L = leftbups;
