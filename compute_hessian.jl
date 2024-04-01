@@ -39,6 +39,8 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     end
     println("fit loaded")
 
+    println("fit has fields:"*string(keys(fit)))
+
     fit     = fit_data["fit"];
     println("found field fit")
     data    = fit_data["data"]
@@ -50,19 +52,20 @@ function compute_hessian(ratname; res_dir="./", overwrite=true)
     println("found field data")
     params  = fit["final"];
     println("found field final")
-
+    
     # Determine how many trials there are
     nt = length(pokedR)
-    println(string(nt)*" trials in this dataset. Computing NLL")
+    println(string(nt)*" trials in this dataset. Computing NLL with params")
 
     # Figure out whether to set priors on model parameters
     prior_mean = fit["prior_mean"]
     prior_var = fit["prior_var"]
-    
-    println(string(nt)*" trials in this dataset")
-
+    for i = 1:length(params)
+        # print the parameters to 3 decimals
+        println(fit["param_names"][i]*": "*string(round(params[i],digits=3))*" (prior mean: "*string(round(prior_mean[i],digits=3))*")")
+    end
     # evaluate model LL just to make sure its correct
-    NLL, res  = compute_LL_res(data, params, prior_mean=prior_mean, prior_var=prior_var);
+    NLL, res  = compute_LL_res(data, params);
     println(NLL)
 
     # check if NLL is within tolerance of MATLAB values

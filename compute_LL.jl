@@ -132,7 +132,7 @@ else
 end
 
 # iterate over trials
-nt = length(data["hit"])
+nt = length(data["pokedR"])
 for tt=1:nt
     ma, va = compute_trial(data,tt,params);
     # compute pr, pl with bias
